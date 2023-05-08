@@ -1,0 +1,342 @@
+---
+title: "Creating raster mask from shapefile"
+author: "Denisse Fierro Arcos"
+date: "2023-05-08"
+output: 
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+In this notebook, we will a shapefile from [VLIZ](https://doi.org/10.14284/386) which contains the boundaries of all the Exclusive Economic Zones (EEZs) around the world to create a raster mask for 22 EEZs of our interest. All these EEZ are located within the South Pacific region and are listed in this [website](https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_KEYFACTS&df[ag]=SPC&df[vs]=1.0&dq=..EEZ.&pd=2020%2C2021&ly[rw]=GEO_PICT). We will access the South Pacific EEZ list remotely.  
+  
+The resulting raster mask for the South Pacific EEZs will be used to extract ISIMIP3B input and output data that will be used to perform vulnerability assessments of this region. This notebook will use a combination of `R` and `Python` with the `reticulate` library.
+
+## Loading R libraries
+
+```{r libraries, results = "hide", warnings = F, message = F}
+library(sf)
+library(raster)
+library(tidyverse)
+library(reticulate)
+```
+
+## Loading EEZs of the world shapefile
+This shapefile was downloaded from [VLIZ](https://doi.org/10.14284/386) and it is not included in this repository due to its size. Ensure you have downloaded this file and saved it inside the `Data` folder.  
+  
+**Note:** The shapefile version 11 downloaded on November 9, 2022 is used in this notebook. If a later version is available, ensure the file paths to the shapefile is updated in the code chunk below.
+
+```{r}
+eez_world <- read_sf("../Data/World_EEZ_v11_20191118/eez_v11.shp") %>% 
+  #We only need a subset of all columns available in the original dataset
+  select(MRGID, GEONAME, SOVEREIGN1, SOVEREIGN2, SOVEREIGN3, TERRITORY1, TERRITORY2, TERRITORY3, AREA_KM2) #%>%
+  # #Turning character columns into factors
+  # mutate_if(is.character, as.factor)
+```
+
+## Loading list of EEZs within the South Pacific region
+As mentioned in the introduction, we will only extract data for 22 EEZs located within the South Pacific region. A list of all relevant EEZs in this region can be found in the [Pacific Data Hub](https://pacificdata.org/). We will access this list through an API.
+```{r}
+#Accessing data
+SP_EEZ <- jsonlite::fromJSON("https://stats-sdmx-disseminate.pacificdata.org/rest/data/SPC,DF_KEYFACTS,1.0/..EEZ.?startPeriod=2020&endPeriod=2021&dimensionAtObservation=AllDimensions", simplifyDataFrame = T)
+
+#Extracting EEZ list
+SP_EEZ <- SP_EEZ$structure$dimensions$observation %>% 
+  filter(str_detect(name, "Pacific")) %>% 
+  select(values) %>% 
+  pull(values) %>% 
+  #Converting to data frame
+  as.data.frame() %>% 
+  #Removing names given in parenthesis before matching to EEZ shapefile
+  mutate(name = str_remove(name, " \\(.*\\)"))
+
+head(SP_EEZ)
+```
+
+## Filtering South Pacific EEZs
+We will do a `left_join` of the EEZ list above to the `TERRITORY1` column in our EEZ shapefile. This will extract most of the EEZs of our interest. This will be followed by a partial match using the `GEONAME` column for any EEZs missing. We will merge these results into a single variable.
+
+```{r}
+#Initial partial match
+eez_SP <- SP_EEZ %>% 
+  left_join(eez_world, by = join_by("name" == "TERRITORY1"), keep = T)
+
+#Checking missing EEZs from initial match
+missing_EEZ <- eez_SP %>% 
+  filter(is.na(MRGID)) %>% 
+  select(id, name)
+
+missing_EEZ
+```
+We will now perform a second partial search using the `GEONAME` column of the EEZ shapefile, and merge it to our first match results.
+
+```{r}
+#Performing a partial search and binding results together
+eez_SP <-  eez_world %>% 
+  filter(str_detect(GEONAME, paste(missing_EEZ$name, collapse = "|"))) %>% 
+  #Adding South Pacific EEZ names
+  bind_cols(missing_EEZ, .) %>% 
+  #Merging to initial results
+  bind_rows(eez_SP) %>% 
+  #Dropping rows with no results
+  drop_na(MRGID) %>% 
+  #Turning character columns into factors
+  mutate_if(is.character, as.factor) %>% 
+  #Converting back to shapefile
+  st_as_sf()
+  
+#Checking all South Pacific EEZs are included in final result
+eez_SP$name %in% SP_EEZ$name
+```
+We will plot the shapefile to inspect the results.
+```{r}
+#Loading land shapefile to include in plot
+land <- rnaturalearth::ne_countries(type = "countries", returnclass = "sf")
+
+#Plotting FAO shapefile
+eez_SP %>% 
+  ggplot()+
+  geom_sf(aes(fill = name))+
+  geom_sf(data = land, inherit.aes = F, color = "gray")+
+  theme_bw()+
+  theme(legend.position = "none")+
+  lims(y = c(-40, 30))
+```
+All the EEZs are located within our area of interest, the South Pacific, we can now save the results.
+
+## Saving results
+We will extract the EEZ names and unique numeric IDs to create the raster masks.
+
+```{r}
+#Identify EEZ and countries associated with them from extracted data files
+eez_SP_codes <- eez_SP %>% 
+  select(name, MRGID) %>% 
+  st_drop_geometry()
+
+#Saving results
+eez_SP_codes %>% 
+  write_csv("../Outputs/SouthPacific_EEZ_keys.csv")
+```
+
+We will save the shapefile with the South Pacific EEZs.
+
+```{r}
+eez_SP %>% 
+  #We will also allow shapefile to be rewritten
+  st_write("../Outputs/SouthPacific_EEZ.shp", delete_layer = T)
+```
+## Extracting names and codes for EEZ
+We will use this information to save correct names for regions in the raster
+
+```{r eez_keys}
+#Create a data frame of unique EEZs
+eez_SP_codes <- eez_SP_codes %>% 
+  group_by(name) %>% 
+  group_keys()
+
+#We can check some of the results
+head(eez_SP_codes, 2)
+```
+
+## Creating a multilayer raster mask based on merged shapefile
+We will now create a multilayer mask that matches the grid used in the physical model forcings. Most models use the same 1 degree grid, with the exception of the DBPM ecosystem model, which uses a different 1 degree grid, and the DBEM model, which uses a 0.5 degree grid.  
+  
+Note that masks *must* match the grid of the model from which data is being extracted. This means that you will need to create a new mask for each grid that is different. In the chunk below, you will find the three different grids identified in the ecosystem models.
+
+### Loading input rasters
+
+```{r load_rasters_input}
+#Loading sample raster to be used as target for rasterising FAO regions
+#Most ecosystem models use this one degree grid
+ras <- raster("../Spatial_Data/InputRasters/gfdl-mom6-cobalt2_obsclim_deptho_1deg_global_fixed.nc")
+
+#Sample from DBPM model
+# ras <- raster("../Spatial_Data/InputRasters/dbpm_ipsl-cm6a-lr_nobasd_historical_nat_default_1deg_tcb_global_monthly_1850_2014.nc")[[1]]
+
+#Sample from DBEM model
+# ras <- raster("../Spatial_Data/InputRasters/dbem_ipsl-cm6a-lr_nobasd_historical_nat_default_05deg_tcb_global_annual_1951_2014.nc")[[1]]
+
+#Sample for 0.25 degree grid
+# ras <- raster("../Spatial_Data/InputRasters/gfdl-mom6-cobalt2_obsclim_deptho_025deg_global_fixed.nc")
+
+#We will define a few extra variables to automate creation of file names for each mask
+#Model resolution
+res <- "1deg"
+
+#Model associated with grid. Leave blank if multiple models use same grid
+mod_name <- ""
+
+#Plotting raster
+plot(ras)
+```
+### Calculate grid area
+The `raster` package allows us to calculate the area of grid cells in $km^2$ in just one line of code. We can save this to calculate weighted means by area. We will use the raster above as a base, and we will save the result on our disk.
+
+```{r eval = F}
+#Calculating grid area
+area_grid <- area(ras)
+
+#Creating file name 
+filename <- paste0("area_", res, mod_name, ".nc")
+
+#Saving results
+writeRaster(area_grid, file.path("../Spatial_Data/Masks", filename), format = "CDF", overwrite = T, 
+            #We will save the variable names so they match the Fish-MIP models
+            varname = "area", xname = "lon", yname = "lat", varunit = "km2")
+```
+
+### Defining function to create rasters from shapefiles
+We will define our own function that will use the shapefiles above to create rasters.
+
+```{r function_shp_raster}
+#Defining function which needs a shapefile and a raster as input
+shp_to_raster <- function(shp, nc_raster){
+  #The final raster will have ones where within the shapefile boundaries
+  rasterize(shp, nc_raster, field = 1)
+}
+
+```
+
+### Applying raster creation function
+We will apply the function we defined above to all the polygons contained within our shapefile. We can do this easily using the `map` function from the `purrr` package.
+
+```{r mapping_function}
+#Split shapefile into regions prior to transforming into raster
+eez_list <- eez_SP %>% 
+  group_by(name) %>% 
+  group_split()
+
+#Applying function to raster list
+grid_raster <- map(eez_list, shp_to_raster, ras) %>% 
+  #Stacking rasters to create a single multilayer raster
+  stack()
+
+#Checking results of stacked raster (selected Australian EEZs)...
+plot(grid_raster[[c(1:4)]])
+```
+
+Finally, we save the outputs in our local machine.
+```{r, eval = F}
+#Define file name
+filename <- paste0("EEZ-world_", res, "mask", mod_name, ".nc")
+
+#Saving raster to disk
+writeRaster(grid_raster, file.path("../Spatial_Data/Masks", filename), format = "CDF", overwrite = T,
+            varname = "EEZ_regions", zname = "Country_EEZ")
+```
+
+# `Python`-based code
+We will now start `Python` and save the correct names for the FAO regions in the `netcdf` file we created in `R`.
+
+```{r}
+#Activating conda
+use_condaenv("CMIP6_data")
+```
+
+## Loading libraries
+
+```{python}
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+```
+
+## Loading raster using `xarray`
+```{python}
+#Getting filename
+fn = f'EEZ-world_{r.res}mask{r.mod_name}.nc'
+
+#Loading multilayer raster as dataset
+mask = xr.open_dataset(os.path.join('../Spatial_Data/Masks', fn))
+#Checking saved file in R
+mask
+```
+Here we can see that the FAO region names are not saved correctly. They are numbered based on its location on the shapefile. We can update this using the data frame with the unique FAO regions we previously created.
+
+```{python}
+#We can simply load the data frame from the R environment.
+eez_keys = r.eez_names_codes
+
+#Checking list
+eez_keys
+```
+We can now update the names on the `netcdf` file using the ID codes for each EEZ.
+
+```{python}
+#We will use the values in the data frame we loaded above
+mask['Country_EEZ'] = [int(i) for i in eez_keys.MRGID]
+```
+
+We will load the full keys into memory and we will select all EEZ areas for Australia to ensure masks are correct.
+
+```{python}
+#Create filename 
+#Loading keys
+eez_full_keys = pd.read_csv('../Spatial_Data/World_EEZ_v11_20191118/eez_key.csv')
+
+#Selecting Australian subset
+aus_eez = mask.sel(Country_EEZ = eez_full_keys['MRGID'][eez_full_keys['SOVEREIGN1'] == 'Australia'].tolist()).EEZ_regions
+```
+
+
+## Plotting results
+We will plot all regions below to ensure we got them all correctly.
+```{python}
+#We will loop through the first five to check results
+for reg in aus_eez:
+  #Plotting results
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  reg.plot(ax = ax, levels = [1, 2])
+  plt.title(reg.Country_EEZ.values.tolist())
+  plt.show()
+
+```
+
+When comparing to the shapefile plots in the `R` section of this notebook, we can see that the regions are named correctly. This means that we can save our results now.
+
+```{python, eval = F}
+#Creating filename
+fn = f'EEZ-world-corrected_{r.res}mask{r.mod_name}.nc'
+
+mask.to_netcdf(os.path.join('../Spatial_Data/Masks', fn))
+```
+
+## Creating a 2D mask in `csv` format
+Depending on the format of your data, it may be better to have a 2D mask in `csv` format. We can create one using the raster we created in the previous step. We will switch to `R` to complete this step.
+
+```{r}
+#First we load our raster mask
+filename <- paste0("EEZ-world-corrected_", res, "mask", mod_name, ".nc")
+# We will load it as a stack
+ras <- stack(file.path("../Spatial_Data/Masks", filename), 
+             #This is the same variable name we used to create our original raster
+             varname = "EEZ_regions")
+
+#We will now convert our stack into points
+ras_df <- rasterToPoints(ras) %>% 
+  #Transforming form matrix to data frame
+  as.data.frame() %>% 
+  #Changing dimensions of data frame, so that our column names appear in the `ID_merged column`
+  pivot_longer(cols = -c(x, y), names_to = "ID_merged") %>% 
+  #We remove any rows containing only NA values
+  drop_na(value) %>% 
+  #We rename latitude and longitude column
+  rename("Lon" = "x", "Lat" = "y") %>% 
+  #We remove the `X` from the areas IDs
+  mutate(ID_merged = as.integer(str_remove(ID_merged, 'X'))) %>% 
+  #Remove the `value` column as it is now redundant
+  select(-value)
+
+#We can update our filename variable 
+filename <- paste0("EEZ-world_", res, "mask", mod_name, ".csv")
+#Saving the end file in your local machine
+write_csv(ras_df, file = file.path("../Spatial_Data/Masks", filename))
+```
