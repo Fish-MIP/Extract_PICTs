@@ -103,8 +103,17 @@ def monthly_sum(ds, mask, file_out):
     #Saving results
     yr_min = str(ds.time.dt.year.values.min())
     yr_max = str(ds.time.dt.year.values.max())
-    path_out = f'{file_out}global_tonnes_{yr_min}_{yr_max}.csv'
-    month_sum.to_pandas().to_csv(path_out, na_rep = np.nan)
+    if 'bins' in month_sum.coords:
+      for i, b in enumerate(month_sum.bins.values):
+        if len(np.unique(month_sum.bins.values)) < len(month_sum.bins.values):
+          bin_number = i
+        else:
+          bin_number = str(int(b))
+        path_out = f'{file_out}global_tonnes_bin-{bin_number}_{yr_min}_{yr_max}.csv'
+        month_sum.isel(bins = i).to_pandas().to_csv(path_out, na_rep = np.nan)
+    else:
+      path_out = f'{file_out}global_tonnes_{yr_min}_{yr_max}.csv'
+      month_sum.to_pandas().to_csv(path_out, na_rep = np.nan)
 
 #Getting list of historical and future projection experiments
 file_hist = [f for f in file_list if "historical" in f]
