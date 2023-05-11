@@ -18,7 +18,7 @@ file_key = input('Write the common file pattern (e.g., *_default_tc_g*.nc): ')
 #file_key = '*_default_tc_g*.nc'
 
 #Base directory where outputs will be saved
-base_out = 'Extract_PICTs'
+base_out = 'Extract_PICTs/OutputData'
 
 #Base directory where data is currently stored
 base_dir = '/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/'
