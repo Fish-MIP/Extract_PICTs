@@ -18,15 +18,13 @@ base_dir = '/work/bb0820/ISIMIP/ISIMIP3b/InputData/climate/ocean/uncorrected/glo
 #Calculate distance from coastline and mask - 50 km from coastline
 #Also calculate means for entire EEZ
 #Indicating location of masks
-#Depth mask
-# depth_mask = xr.open_dataarray('/work/bb0820/ISIMIP/ISIMIP3b/InputData/geo_conditions/ocean/ipsl-cm6a-lr_r1i1p1f1_picontrol_deptho_60arcmin_global_fixed.nc')
+#EEZs and GBR mask - Transforming from km2 to m2 before applying weights
+area = xr.open_dataarray('Masks/PICT/masked-grid-area_ipsl-cm6a-lr_60arcmin.nc')*1e6
+area_2 = xr.open_dataarray('Masks/PICT/masked-grid-area_1deg_DBPM.nc')*1e6
 
-#EEZs and GBR mask- change to meters before applying weights
-area = xr.open_dataarray('Masks/PICT/masked-grid-area_ipsl-cm6a-lr_60arcmin.nc')
-#Removing latitudes outside area of interest and masking open ocean areas
-# area = area.where(depth_mask < 200)
 #Calculating total area per AOI
 mask_area_tot = area.groupby('mask').sum()
+mask_area_tot2 = area_2.groupby('mask').sum()
 
 #Remove depth mask - no longer needed
 # del depth_mask
@@ -118,21 +116,36 @@ def masking_data(ds, var_int):
 #Yearly weighted average
 def weighted_mean(ds, mask, mask_area_total, path_out_nc, path_out_csv):
   #Multiplying values for grid cell area
-  ds_weight = ds*mask
+  try:
+    ds_weight = ds*mask
+  except:
+    ds_weight = ds.load()*mask
   #Calculating means per month/year
   year_mean = []
-  try:
+  if 'picontrol' not in path_out_csvfile:
     for yr, da in ds_weight.groupby('time.year'):
-      year_mean.append(da.groupby('mask').sum())
-  except:
+      #Calculate mean across time and then across space
+      da_corr = da.mean('time').groupby('mask').sum()
+      #Divide by total area per EEZ/GBR
+      da_corr = da_corr/mask_area_total
+      #Add year
+      da_corr.coords['year'] = yr
+      #Add to list holding results
+      year_mean.append(da_corr)
+  else:
     for yr, da in ds_weight.groupby('year'):
-      year_mean.append(da.groupby('mask').sum())
+      #Calculate mean across time and then across space
+      da_corr = da.mean('time').groupby('mask').sum()
+      #Divide by total area per EEZ/GBR
+      da_corr = da_corr/mask_area_total
+      #Add year
+      da_corr.coords['year'] = yr
+      #Add to list holding results
+      year_mean.append(da_corr)
   
   #Transform data frame into data array
-  year_mean = xr.concat(year_mean, dim = 'time')
-  #Divide by total area per EEZ/GBR
-  year_mean = year_mean/mask_area_total
-
+  year_mean = xr.concat(year_mean, dim = 'year')
+  
   #Saving results
   #Netcdf output
   year_mean.to_netcdf(path_out_nc)
@@ -186,7 +199,13 @@ for dp in dir_str:
       try:
         ds_mask = masking_data(ds, var_int)
         del ds
-        weighted_mean(ds_mask, area, mask_area_tot, path_out_ncfile, path_out_csvfile)
+        if var_int in ['uo', 'vo'] and 'GFDL' in dp:
+          mask = area_2
+          mask_tot = mask_area_tot2
+        else:
+          mask = area
+          mask_tot = mask_area_tot
+        weighted_mean(ds_mask, mask, mask_tot, path_out_ncfile, path_out_csvfile)
       except:
         print(f'File could not be processed: {f}')
         pass
