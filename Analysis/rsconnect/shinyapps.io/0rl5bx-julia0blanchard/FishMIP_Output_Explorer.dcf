@@ -1,0 +1,12 @@
+name: FishMIP_Output_Explorer
+title: FishMIP_Output_Explorer
+username: 0rl5bx-julia0blanchard
+account: 0rl5bx-julia0blanchard
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9999846
+bundleId: 7731182
+url: https://0rl5bx-julia0blanchard.shinyapps.io/FishMIP_Output_Explorer/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
