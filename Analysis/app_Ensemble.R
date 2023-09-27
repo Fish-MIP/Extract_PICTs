@@ -14,6 +14,8 @@ library(tidyverse)
 #file="http://portal.sf.utas.edu.au/thredds/catalog/gem/fishmip/ISIMIP3a/InputData/fishing/histsoc/catalog.html?dataset=fishmip/ISIMIP3a/InputData/fishing/histsoc/calibration_catch_histsoc_1850_2004.csv"
 #fishmip <- read_csv(file="http://portal.sf.utas.edu.au/thredds/fileServer/gem/fishmip/ISIMIP3a/InputData/fishing/histsoc/calibration_catch_histsoc_1850_2004.csv")
 
+
+### REDO THE EEZ FILES FOR NEW EEZs - fish_biomass, tcb, demersal
 fishmip <- read.csv(file="EEZ_tcb.csv")
 fishmip <- fishmip[fishmip$dataType=="per",]
 #fishmip <- fishmip[fishmip$model=="BOATS",]

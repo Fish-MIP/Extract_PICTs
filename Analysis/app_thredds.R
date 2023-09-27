@@ -36,7 +36,7 @@ library(sass)
 library(raster)
 library(sf)
 library(terra)
-
+library(rgdal)
 
 # get the mask for regional ecosystem models
 mask <- read.csv(file="../Data/FAO-EEZ-corrected_1degmask.csv")
@@ -48,15 +48,17 @@ names(mask)<-c("Lon","Lat","region","ID")
 #THREDDS folder with the different climate forcings
 regions<-unique(mask$region)
 
-#thredds_dir<-"http://portal.sf.utas.edu.au/thredds/dodsC/gem/fishmip/PICTs/Yearly_Rasters/OutputData"
-gem_dir<-"/rd/gem/private/fishmip_outputs/ISIMIP3b/OutputData/marine-fishery_global"
+thredds_dir<-"http://portal.sf.utas.edu.au/thredds/dodsC/gem/fishmip/PICTs/Yearly_Rasters/OutputData"
+#thredds_dir<-"https://portal.sf.utas.edu.au/thredds/fileServer/gem/fishmip/PICTs/Yearly_Rasters/OutputData"
+#gem_dir<-"/rd/gem/private/fishmip_outputs/ISIMIP3b/OutputData/marine-fishery_global"
 #model<-"APECOSM"
 model <- c("APECOSM","BOATS","DBEM","DBPM","EcoOcean","EcoTroph","FEISTY","MACROECOLOGICAL","ZooMSS")
 #ESMname ="ipsl-cm6a-lr"
 ESMname =c("ipsl-cm6a-lr","gfdl-esm4")
 #modelscen = "historical"
 modelscen = c("historical","ssp126","ssp585")
-varNames=c("tcb","tcblog10_bin2","tcblog10_bin3","tcblog10_bin4","tcblog10_bin5")
+varNames=c("tcb","tcblog10_bin-2","tcblog10_bin-3","tcblog10_bin-4","tcblog10_bin-5")
+#varNames=c("tcblog10_bin2")
 
 
 ui <- fluidPage(
@@ -132,70 +134,63 @@ server <- function(input, output) {
     mask_to_use <- st_as_sf(filtered_mask(), coords = c("Lon", "Lat"))
     #mask_to_use <- st_as_sf(mask, coords = c("Lon", "Lat"))
     
-    file_subdir<-paste(gem_dir,
+    file_subdir<-paste(thredds_dir,
                        model=input$model,
                        ESMname =input$ESMname,
                        modelscen=input$modelscen,sep="/")
     
-    #file_subdir<-paste(gem_dir,model=model,ESMname =ESMname,modelscen=modelscen,sep="/")
+    #file_subdir<-paste(thredds_dir,model=model,ESMname =ESMname,modelscen=modelscen,sep="/")
 
     if (input$modelscen == "historical" & input$model %in% c("APECOSM","DBPM")){
-    file_subdir<-paste(gem_dir,
+    file_subdir<-paste(thredds_dir,
                          model=input$model,
                          ESMname =input$ESMname,
                          modelscen=input$modelscen,sep="/")
     
-     file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_monthly_1850_2014.nc",sep="_")
-   
+     file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"mean-yearly_1850_2014.nc",sep="_")
+     if (input$variable != "tcb")  file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=strsplit(input$variable,"_")[[1]][1],"mean-yearly",strsplit(input$variable,"_")[[1]][2],"1850_2014.nc",sep="_")
+     
       }
 
-    if (input$modelscen == "historical" & input$model %in% c("BOATS","EcoOcean","FEISTY","MACROECOLOGICAL","ZooMSS")){
+    if (input$modelscen == "historical" & input$model %in% c("BOATS","EcoOcean","FEISTY","MACROECOLOGICAL","ZooMSS","EcoTroph")){
       file_subdir<-paste(gem_dir,
                          model=input$model,
                          ESMname =input$ESMname,
                          modelscen=input$modelscen,sep="/")
       
-      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_monthly_1950_2014.nc",sep="_")
-    }
+      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"mean-yearly_1950_2014.nc",sep="_")
+      if (input$variable != "tcb")  file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=strsplit(input$variable,"_")[[1]][1],"mean-yearly",strsplit(input$variable,"_")[[1]][2],"1950_2014.nc",sep="_")
+      
+     }
     
-    if (input$modelscen == "historical" & input$model %in% c("MACROECOLOGICAL","ZooMSS","EcoTroph")){
-      file_subdir<-paste(gem_dir,
-                         model=input$model,
-                         ESMname =input$ESMname,
-                         modelscen=input$modelscen,sep="/")
-      
-      
-      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_annual_1950_2014.nc",sep="_")
-     
-      
-    }
     
     if (input$modelscen == "historical" & input$model %in% c("DBEM")){
-      file_subdir<-paste(gem_dir,
+      file_subdir<-paste(thredds_dir,
                          model=input$model,
                          ESMname =input$ESMname,
                          modelscen=input$modelscen,sep="/")
       
       
-      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_annual_1951_2014.nc",sep="_")
-     
+      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"mean-yearly_1951_2014.nc",sep="_")
+      if (input$variable != "tcb")  file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=strsplit(input$variable,"_")[[1]][1],"mean-yearly",strsplit(input$variable,"_")[[1]][2],"1951_2014.nc",sep="_")
+      
     }
     
     
     if (input$modelscen != "historical"){
-      file_subdir<-paste(gem_dir,
+      file_subdir<-paste(thredds_dir,
                          model=input$model,
                          ESMname =input$ESMname,
                          "future",sep="/")
       
-      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_monthly_2015_2100.nc",sep="_")
-        if (input$model %in% c("MACROECOLOGICAL","ZooMSS","EcoTroph","DBEM")){
-          file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"global_annual_2015_2100.nc",sep="_")
-        }
-
-             }
+      
+      file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=input$variable,"mean-yearly_2015_2100.nc",sep="_")
+      if (input$variable != "tcb")  file_name<-paste(model=str_to_lower(input$model),ESMname=input$ESMname,"nobasd",modelscen=input$modelscen,"nat","default",varNames=strsplit(input$variable,"_")[[1]][1],"mean-yearly",strsplit(input$variable,"_")[[1]][2],"2015_2100.nc",sep="_")
+      
+      
+         }
     
-    #file_name<-paste(model=str_to_lower(model),ESMname=ESMname,"nobasd",modelscen=modelscen,"nat","default",varNames="tcblog10","global_monthly_1850_2014.nc",sep="_")
+    #file_name<-paste(model=str_to_lower(model),ESMname=ESMname,"nobasd",modelscen=modelscen,"nat","default",varNames=strsplit(varNames,"_")[[1]][1],"mean-yearly",strsplit(varNames,"_")[[1]][2],"1850_2014.nc",sep="_")
     
     file_to_get<-paste(file_subdir,file_name,sep="/")
     
@@ -263,7 +258,7 @@ server <- function(input, output) {
     #ts<-terra::global(gridded_ts,mean)
     #ts<-cellStats(gridded_ts, 'mean')
     #ts<-terra::tapp(filtered_data(), fun = mean)
-    ts<-cellStats(filtered_data(), 'mean')
+    #ts<-cellStats(filtered_data(), 'mean')
     #timevals<-seq(as.Date("1850-01-01"),as.Date("2014-12-01"), by="month")
     # if(input$modelscen=="historical") timevals<-seq(as.Date("1850-01-01"),as.Date("2014-12-01"), by="year")
     # if(input$modelscen!="historical") timevals<-seq(as.Date("1850-01-01"),as.Date("2014-12-01"), by="year")
