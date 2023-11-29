@@ -1,5 +1,5 @@
 # Extract PICTs
-This repository contains the workflow developed to extract 3B (CMIP6) input and output data for all scenarios to carry out vulnerability assessments for the South Pacific by the [Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP) group](https://www.isimip.org/about/marine-ecosystems-fisheries/).  
+This repository contains the workflow developed to extract ISIMIP3B (CMIP6) input and output data for all scenarios to carry out vulnerability assessments for the South Pacific by the [Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP) group](https://www.isimip.org/about/marine-ecosystems-fisheries/).  
   
 The workflow includes a combination of `R` and `Python` scripts.
   
