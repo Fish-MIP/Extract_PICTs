@@ -1,0 +1,46 @@
+---
+title: "Biomass projections for Pacific Islands Countries and Territories (PICTs)"
+author: "Beth Fulton and Denisse Fierro Arcos"
+date: "2023-11-29"
+output:
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+# Generating biomass projections for Pacific Islands Countries and Territories (PICTs)
+
+The workflow described in this notebook was developed by [Dr Beth Fulton](https://orcid.org/0000-0002-5904-7917) (CSIRO) and implemented in `R` by [Denisse Fierro Arcos](https://github.com/lidefi87/). The text describing the methods was largely written by Dr Fulton with minor edits by Denisse.    
+    
+This notebook implements in `R` the workflow designed to generate demersal fish (and invertebrate) biomass projections for the Pacific Islands Countries and Territories (PICTs) to the year 2100. This workflow uses relationships observed in coral reefs between coral cover and fish biomass, as well as projections of coral cover in the Great Barrier Reef and fish biomass in the Pacific from the [Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP)](https://fish-mip.github.io/).  
+  
+## Loading relevant libraries
+  
+```{r, message = F, warning = F}
+library(readr)
+library(dplyr)
+```
+  
+## Listing files containing past and future fish biomass estimates
+To generate biomass projections for PICTs, we used biomass estimates produced by six different fisheries models:  
+1. [APECOSM](https://apecosm.org/) - Apex Predators ECOSystem Model, which represents the spatialized dynamics of open ocean pelagic ecosystems in the global ocean.  
+2. [BOATS](https://earthsystemdynamics.org/models/boats/) - BiOeconomic mArine Trophic Size-spectrum model simulates the global fishery as a coupled ecological-economic system.  
+3. [DBPM](https://github.com/Benthic-Pelagic-Size-Spectrum-Model/dbpm_isimip_2) - The Dynamic Benthic Pelagic Model is a dynamic size spectrum model for modelling the coupling "pelagic" size-based predators and "benthic" detritivores that share a unstructured resource pool (detritus).  
+4. [EcoTroph](https://doi.org/10.1016/j.ecolmodel.2009.07.031) - EcoTroph models the functioning of marine ecosystems as flows of biomass from low to high trophic levels, so as to quantify easily the impacts of fishing at an ecosystem scale.  
+5. [Macroecological](https://doi.org/10.1371/journal.pone.0133794) - Macroecological is a static equilibrium model, which uses ecological and metabolic scaling theory to predict mean size composition and abundance of animals (including fish).  
+6. [ZooMSS](https://doi.org/10.1016/j.ecolmodel.2020.109265) - The Zooplankton Model of Size Spectra is a functional size-spectrum model of the marine ecosystem to resolve phytoplankton, nine zooplankton functional groups (heterotrophic flagellates and ciliates, omnivorous and carnivorous copepods, larvaceans, euphausiids, salps, chaetognaths and jellyfish) and three size-based fish groups.  
+  
+```{r cars}
+#Folder containing outputs from fisheries models
+base_folder <- "/rd/gem/public/fishmip/PICTs/EEZ_Summaries_bio_10g_10kg/EEZsummaries"
+#Listing all relevant files to calculate biomass projections
+global_files <- list.files(base_folder, pattern =  "global.csv", full.names = T)
+```  
+  
+## 1. Relationships between coral cover and fish biomass
+These relationships were sourced from the literature. A quick synthesis of existing relationships can be found in the document `Relationships for fish biomass model.docx`. The most useful relationships came from the [Graham and Nash (2013)](https://doi.org/10.1007/s00338-012-0984-y) data set (explored in `graham_nash_2012_dataset.xlsx`). Using the raw data gives the following relationships:
+
+**Equation 1**: Structural complexity as a function of coral cover. ($r^2$ = 0.4314)  
+$struct_{complexity} = 3e^{-7} \times {coral_{cover}}^4 - 5^{-5} \times {coral_{cover}}^3 + 0.0022 \times {coral_{cover}}^2 + 1.3892$  
+  
+
