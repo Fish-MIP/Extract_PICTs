@@ -17,11 +17,24 @@ This notebook implements in `R` the workflow designed to generate demersal fish 
 ## Loading relevant libraries
   
 ```{r, message = F, warning = F}
-library(readr)
-library(dplyr)
+library(tidyverse)
+library(openxlsx)
+library(sf)
+library(units)
 ```
   
 ## Listing files containing past and future fish biomass estimates
+```{r}
+# #Folder containing outputs from fisheries models
+# base_folder <- "/rd/gem/public/fishmip/PICTs/EEZ_Summaries_bio_10g_10kg/EEZsummaries"
+# #Listing all relevant files to calculate biomass projections
+# global_files <- list.files(base_folder, pattern =  "global.csv", full.names = T)
+
+#Base spreadsheet
+working_data <- "../Analysis/Excel Sheets/bias_correction_calculations_mean_coral_cover_all_climate_scenarios.xlsx"
+```  
+  
+## Steps in generating biomass projections for PICTs
 To generate biomass projections for PICTs, we used biomass estimates produced by six different fisheries models:  
 1. [APECOSM](https://apecosm.org/) - Apex Predators ECOSystem Model, which represents the spatialized dynamics of open ocean pelagic ecosystems in the global ocean.  
 2. [BOATS](https://earthsystemdynamics.org/models/boats/) - BiOeconomic mArine Trophic Size-spectrum model simulates the global fishery as a coupled ecological-economic system.  
@@ -29,18 +42,149 @@ To generate biomass projections for PICTs, we used biomass estimates produced by
 4. [EcoTroph](https://doi.org/10.1016/j.ecolmodel.2009.07.031) - EcoTroph models the functioning of marine ecosystems as flows of biomass from low to high trophic levels, so as to quantify easily the impacts of fishing at an ecosystem scale.  
 5. [Macroecological](https://doi.org/10.1371/journal.pone.0133794) - Macroecological is a static equilibrium model, which uses ecological and metabolic scaling theory to predict mean size composition and abundance of animals (including fish).  
 6. [ZooMSS](https://doi.org/10.1016/j.ecolmodel.2020.109265) - The Zooplankton Model of Size Spectra is a functional size-spectrum model of the marine ecosystem to resolve phytoplankton, nine zooplankton functional groups (heterotrophic flagellates and ciliates, omnivorous and carnivorous copepods, larvaceans, euphausiids, salps, chaetognaths and jellyfish) and three size-based fish groups.  
-  
-```{r cars}
-#Folder containing outputs from fisheries models
-base_folder <- "/rd/gem/public/fishmip/PICTs/EEZ_Summaries_bio_10g_10kg/EEZsummaries"
-#Listing all relevant files to calculate biomass projections
-global_files <- list.files(base_folder, pattern =  "global.csv", full.names = T)
-```  
-  
+    
 ## 1. Relationships between coral cover and fish biomass
-These relationships were sourced from the literature. A quick synthesis of existing relationships can be found in the document `Relationships for fish biomass model.docx`. The most useful relationships came from the [Graham and Nash (2013)](https://doi.org/10.1007/s00338-012-0984-y) data set (explored in `graham_nash_2012_dataset.xlsx`). Using the raw data gives the following relationships:
+These relationships were sourced from the literature. A quick synthesis of existing relationships can be found in the document `Relationships for fish biomass model.docx`.  
+  
+The most useful relationships came from the [Graham and Nash (2013)](https://doi.org/10.1007/s00338-012-0984-y) data set (explored in `graham_nash_2012_dataset.xlsx`). Using the raw data gives the following relationships:
 
 **Equation 1**: Structural complexity as a function of coral cover. ($r^2$ = 0.4314)  
-$struct_{complexity} = 3e^{-7} \times {coral_{cover}}^4 - 5^{-5} \times {coral_{cover}}^3 + 0.0022 \times {coral_{cover}}^2 + 1.3892$  
+$struct_{complexity} = 3e^{-7} \times {coral_{cover}}^4 - 5e^{-5} \times {coral_{cover}}^3 + 0.0022 \times {coral_{cover}}^2 + 1.3892$  
   
+```{r}
+#Loading coral cover data
+coral <- read.xlsx(working_data, sheet = 1)
+
+#Visualising data
+coral |> 
+  ggplot(aes(x = Year, y = coral_cover, colour = scenario, linetype = scenario))+
+  geom_line()+
+  theme_bw()+
+  labs(y = "Coral cover (%)")+
+  theme(axis.title.x = element_blank(), 
+        legend.position = "top", legend.direction = "horizontal")
+```
+  
+```{r}
+#Calculating structural complexity using equation 1 above
+coral <- coral |> 
+  #rearrange data to facilitate calculations
+  pivot_longer(-Year, names_to = "scenario", values_to = "coral_cover") |> 
+  #calculate structural complexity
+  mutate(struct_complex = (3e-7*(coral_cover^4))-((5e-5)*(coral_cover^3))+(0.0022*(coral_cover^2))+1.3892)
+
+#Checking results
+head(coral)
+```
+  
+**Equation 2**: Fish biomass ($kg \times ha^{-1}$) as a function of structural complexity ($r^2$ = 0.6102). Note that a logistic is a little poorer fit, so using a quadratic on the argument that once a reef habitat is too complex, it loses places for fish to sit.  
+$fish_{biomass} = -2294.6 \times {struct_{complexity}}^2 + 8961.1 \times struct_{complexity} - 6843.6$  
+  
+```{r}
+#Calculating fish biomass
+coral <- coral |> 
+  mutate(fish_biomass = (-2294.6*(struct_complex^2))+(8961.1*struct_complex)-6843.6)
+
+#Checking results
+head(coral)
+```
+  
+The REEF_MOD project (of Yves-Marie Bozec and Peter Mumby at University of Queensland) has postulated a slightly different set of relationships from the same data (basically a linear relationship).  
+  
+Fitting a line to the lower, median and upper bounds of this relationship gives the following equations:  
+  
+**Equation 3**: REEFMOD lower bound equation: $fish_{biomass} = 12.716 \times coral_{cover} + 146.75$  
+**Equation 4**: REEFMOD median equation: $fish_{biomass} = 13.56 \times coral_{cover} + 732.15$
+**Equation 5**: REEFMOD upper bound equation: $fish_{biomass} = 14.285 \times coral_{cover} + 1325.7$  
+  
+```{r}
+#Calculating REEFMOD biomass values
+coral <- coral |> 
+  #lower biomass bound
+  mutate(reefmod_lower_biomass = 12.716*coral_cover+146.75,
+         #median biomass
+         reefmod_median_biomass = 13.56*coral_cover+732.15,
+         #upper biomass bound
+         reefmod_upper_biomass = 14.285*coral_cover+1325.7)
+
+head(coral)
+```
+  
+Note that the REEFMOD team predicted mean coral coverage from 2024 to 2100 for the Great Barrier Reef (GBR) under five emissions scenarios: SSP1-1.9, SSP1-2.6, SSP2-4.5, SSP3-7.0, and SSP5-8.5. The above calculations were applied to these five projections.    
+  
+## Applying corrections to biomass projections from Fish-MIP models
+Monthly projected biomass for the GBR under scenarios SSP1-2.6 and SSP5-8.5 were extracted from Fish-MIP global models using a polygon. Annual time series were calculated for Fish-MIP models forced by both GFDL and IPSL general circulation models.  
+  
+Projections from DBEM were removed from further analysis because biomass values were 100x lower than all other models. Similarly, biomass values projected by Ecotroph forced by GFDL were removed as those values were an order of magnitude higher than all other models.  
+  
+Biomass projections from all other models were used to calculate a biomass ensemble minimum, mean and maximum from 2024 to 2100.  
+  
+### Loading projected biomass data 
+  
+```{r}
+#Load monthly biomass
+bio_data_all_models <- read.xlsx(working_data, sheet = "vsFISHMIP All TimeSteps", startRow = 2, detectDates = T)
+#We will divide this scenario
+scenarios <- which(str_detect(names(bio_data_all_models), "SSP"))
+
+#Creating empty data frame to save results
+bio_data <- data.frame()
+#Create new longer data frame - Split at each scenario
+for(i in 1:length(scenarios)){
+  #Find the column with scenario name
+  start <- scenarios[i]
+  #End in the column before next scenario
+  end <- scenarios[i+1]-1
+  #If it is the last scenario, select everything until the end
+  if(is.na(end)){
+    end <- ncol(bio_data_all_models)
+  }
+  #Get scenario name
+  ssp <- names(bio_data_all_models)[start]
+  #Extract data between start and end columns
+  da <- bio_data_all_models[,(start+1):end] |> 
+    #Reshaping data
+    pivot_longer(!Year, names_to = "fish_model", values_to = "proj_biomass") |> 
+    #Add scenario
+    mutate(scenario = ssp,
+           #Get year from date
+           year = year(Year),
+           #Get month from date
+           month = month(Year)) |> 
+    #Remove date (incorrectly labelled as Year)
+    select(!Year) |> 
+    #Remove data before 2024
+    filter(year >= 2024)
+  #Putting everything together in new data frame
+  bio_data <- bio_data |> 
+    bind_rows(da)
+}
+
+#Checking results
+head(bio_data)
+```
+  
+### Calculating yearly biomass
+Here we add all biomass values per model, per year, and per scenario.  
+  
+```{r}
+#Yearly biomass calculations
+bio_data <- bio_data |> 
+  group_by(scenario, fish_model, year) |> 
+  #Remove
+  summarise(annual_biomass = sum(proj_biomass, na.rm = T))
+
+#We need to calculate the area for the GBR. We will use the GBR shapefile to calculate this
+gbr_area <- read_sf("../Data/GBR_Outer_Boundary/GBR_outer_boundary.shp") |> 
+  st_area()
+#The area is given as m^2, but we need it in hectares
+units(gbr_area) <- make_units(ha)
+
+#Convert biomass units from tonnes to kg/ha
+bio_data <- bio_data |> 
+  mutate(biomass_kg_ha = annual_biomass*1000/as.numeric(gbr_area))
+
+#Check results
+bio_data
+```
 
