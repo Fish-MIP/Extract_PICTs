@@ -24,19 +24,8 @@ library(janitor)
 library(units)
 library(knitr)
 ```
-  
-## Listing files containing past and future fish biomass estimates
-```{r}
-# #Folder containing outputs from fisheries models
-# base_folder <- "/rd/gem/public/fishmip/PICTs/EEZ_Summaries_bio_10g_10kg/EEZsummaries"
-# #Listing all relevant files to calculate biomass projections
-# global_files <- list.files(base_folder, pattern =  "global.csv", full.names = T)
-
-#Base spreadsheet
-working_data <- "../Analysis/Excel Sheets/bias_correction_calculations_mean_coral_cover_all_climate_scenarios.xlsx"
-```  
-  
-## Steps in generating biomass projections for PICTs
+    
+## Fish-MIP models used to generate biomass projections for PICTs
 To generate biomass projections for PICTs, we used biomass estimates produced by six different fisheries models:  
 1. [APECOSM](https://apecosm.org/) - Apex Predators ECOSystem Model, which represents the spatialized dynamics of open ocean pelagic ecosystems in the global ocean.  
 2. [BOATS](https://earthsystemdynamics.org/models/boats/) - BiOeconomic mArine Trophic Size-spectrum model simulates the global fishery as a coupled ecological-economic system.  
@@ -55,6 +44,9 @@ The most useful relationships came from the [Graham and Nash (2013)](https://doi
 $struct_{complexity} = 3e^{-7} \times {coral_{cover}}^4 - 5e^{-5} \times {coral_{cover}}^3 + 0.0022 \times {coral_{cover}}^2 + 1.3892$  
   
 ```{r}
+#Base spreadsheet
+working_data <- "../Analysis/Excel Sheets/bias_correction_calculations_mean_coral_cover_all_climate_scenarios.xlsx"
+
 #Loading coral cover data
 coral <- read.xlsx(working_data, sheet = 1)
 
@@ -85,10 +77,13 @@ coral |>
 **Equation 2**: Fish biomass ($kg \times ha^{-1}$) as a function of structural complexity ($r^2$ = 0.6102). Note that a logistic is a little poorer fit, so using a quadratic on the argument that once a reef habitat is too complex, it loses places for fish to sit.  
 $fish_{biomass} = -2294.6 \times {struct_{complexity}}^2 + 8961.1 \times struct_{complexity} - 6843.6$  
   
+In this step, we will also convert fish biomass from $kg \times ha^{-1}$ to $g \times m^{-2}$, so it matches the outputs of Fish-MIP models.  
+  
 ```{r}
 #Calculating fish biomass
 coral <- coral |> 
-  mutate(fish_biomass = (-2294.6*(struct_complex^2))+(8961.1*struct_complex)-6843.6)
+  mutate(fish_biomass_kg_ha = (-2294.6*(struct_complex^2))+(8961.1*struct_complex)-6843.6) |> 
+  mutate(fish_biomass = fish_biomass_kg_ha*1000/10000)
 
 #Checking results
 head(coral)
@@ -99,32 +94,111 @@ The REEF_MOD project (of Yves-Marie Bozec and Peter Mumby at University of Queen
 Fitting a line to the lower, median and upper bounds of this relationship gives the following equations:  
   
 **Equation 3**: REEFMOD lower bound equation: $fish_{biomass} = 12.716 \times coral_{cover} + 146.75$  
-**Equation 4**: REEFMOD median equation: $fish_{biomass} = 13.56 \times coral_{cover} + 732.15$
+**Equation 4**: REEFMOD median equation: $fish_{biomass} = 13.56 \times coral_{cover} + 732.15$  
 **Equation 5**: REEFMOD upper bound equation: $fish_{biomass} = 14.285 \times coral_{cover} + 1325.7$  
   
 ```{r}
 #Calculating REEFMOD biomass values
 coral <- coral |> 
   #lower biomass bound
-  mutate(reefmod_lower_biomass = 12.716*coral_cover+146.75,
+  mutate(reefmod_lower_biomass = (12.716*coral_cover+146.75)*1000/10000,
          #median biomass
-         reefmod_median_biomass = 13.56*coral_cover+732.15,
+         reefmod_median_biomass = (13.56*coral_cover+732.15)*1000/10000,
          #upper biomass bound
-         reefmod_upper_biomass = 14.285*coral_cover+1325.7)
+         reefmod_upper_biomass = (14.285*coral_cover+1325.7)*1000/10000) |> 
+  #We will drop the biomass in Kg/ha
+  select(!fish_biomass_kg_ha)
 
 head(coral)
 ```
   
-Note that the REEFMOD team predicted mean coral coverage from 2024 to 2100 for the Great Barrier Reef (GBR) under five emissions scenarios: SSP1-1.9, SSP1-2.6, SSP2-4.5, SSP3-7.0, and SSP5-8.5. The above calculations were applied to these five projections.    
+Note that the REEFMOD team predicted mean coral coverage from 2024 to 2100 for the Great Barrier Reef (GBR) under five emissions scenarios: `SSP1-1.9`, `SSP1-2.6`, `SSP2-4.5`, `SSP3-7.0`, and `SSP5-8.5`. The above calculations were applied to these five projections.    
   
 ## 2. Biomass projections from Fish-MIP models
-Monthly projected biomass for the GBR under scenarios SSP1-2.6 and SSP5-8.5 were extracted from Fish-MIP global models using a polygon. Annual time series were calculated for Fish-MIP models forced by both GFDL and IPSL general circulation models.  
+Monthly projected biomass for the GBR under scenarios `SSP1-2.6` and `SSP5-8.5` were extracted from Fish-MIP global models using a polygon. Annual time series were calculated for Fish-MIP models forced by both GFDL and IPSL general circulation models.  
   
 Projections from DBEM were removed from further analysis because biomass values were 100x lower than all other models. Similarly, biomass values projected by Ecotroph forced by GFDL were removed as those values were an order of magnitude higher than all other models.  
   
 Biomass projections from all other models were used to calculate a biomass ensemble minimum, mean and maximum from 2024 to 2100.  
   
-### Loading projected biomass data 
+### Extracting biomass data for the GBR
+We will extract biomass estimates for the GBR from all global Fish-MIP models using a mask derived from the GBR outer boundaries. We will then calculate mean yearly biomass for each model and scenario.  
+  
+```{r}
+#Folder containing outputs from Fish-MIP models
+base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
+#Listing all relevant files to calculate biomass projections
+global_files <- list.files(base_folder, full.names = T)
+
+#Loading gbr mask
+gbr_mask <- read_csv("../Data/GBR_Outer_Boundary/GBR_outer_boundary_mask.csv")
+
+#Defining function to extract GBR biomass data from Fish-MIP outputs
+mean_yr_bio <- function(file_name, mask){
+  #Load file
+  da <- read.csv(file_name) |> 
+    #Extract GBR data - by applying mask
+    right_join(mask, by = c("x", "y")) |> 
+    #Removing columns not needed
+    select(!area_m:layer) |> 
+    #Calculating mean yearly biomass
+    group_by(year, mem, esm, scenario) |> 
+    summarise(mean_annual_bio = mean(biomass, na.rm = T))
+}
+
+#Apply function to all Fish-MIP output files
+bio_data <- global_files |> 
+  map(\(x) mean_yr_bio(x, gbr_mask))
+
+#Combine all list elements into a single data frame
+bio_data <- bio_data |> 
+  list_rbind()
+
+#Checking results
+head(bio_data)
+```
+    
+### Calculating biomass ensemble statistics
+We will calculate minimum, mean and maximum biomass for the entire ensemble between 2024 and 2100.  
+  
+```{r}
+#Calculating ensemble statistics
+bio_data <- bio_data |> 
+  ungroup() |> 
+  #Rename scenarios to match coral data
+  mutate(scenario = case_when(scenario == "ssp126" ~ "SSP1-2.6",
+                              scenario == "ssp585" ~ "SSP5-8.5",
+                              T ~ scenario)) |> 
+  group_by(scenario, year) |> 
+  summarise(fishmip_lower_bio = min(mean_annual_bio, na.rm = T),
+            fishmip_mean_bio = mean(mean_annual_bio, na.rm = T),
+            fishmip_upper_bio = max(mean_annual_bio, na.rm = T))
+
+#Checking results
+head(bio_data)
+```
+    
+## 3. Comparing Fish-MIP and REEFMOD biomass estimates
+For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass estimates calculated from REEFMOD data (step 1) and the Fish-MIP model ensemble (step 2). We will divide the ensemble mean by the biomass estimates obtained from equation 2 (`fish_biomass` column in `coral` data frame), and by the median, upper, lower bounds obtained from REEFMOD data (equations 3 to 5). This calculations will help us estimate the bias of the Fish-MIP global model ensemble.  
+  
+```{r}
+fishmip_biases <- bio_data |> 
+  #Adding REEFMOD biomass estimates
+  inner_join(coral, by = c("scenario", "year")) |> 
+  #Removing coral data that is not needed
+  select(!c(coral_cover, struct_complex)) |> 
+  #Calculating Fish-MIP ensemble biases
+  mutate(mean_bias_fish_bio_fishmip = fish_biomass/fishmip_mean_bio,
+         lower_bias_reefmod_fishmip = reefmod_lower_biomass/fishmip_lower_bio,
+         mean_bias_reefmod_fishmip = reefmod_median_biomass/fishmip_mean_bio,
+         upper_bias_reefmod_fishmip = reefmod_upper_biomass/fishmip_upper_bio)
+  
+#Check results
+head(fishmip_biases)
+```
+  
+## 4. Calculating proportion of demersal biomass (*optional step*)
+Two Fish-MIP models provide demersal and pelagic biomass estimates: FEISTY (forced by GFDL model) and DBPM (forced by IPSL model). We will use this information to calculate the ratio of the demersal component from the total consumer biomass (demersal + pelagic biomass).  
   
 ```{r}
 #Load monthly biomass
@@ -134,7 +208,7 @@ bio_data_all_models <- read.xlsx(working_data, sheet = "vsFISHMIP All TimeSteps"
 scenarios <- which(str_detect(names(bio_data_all_models), "SSP"))
 
 #Creating empty data frame to save results
-bio_data <- data.frame()
+dem_pel_bio <- data.frame()
 #Create new longer data frame - Split at each scenario
 for(i in 1:length(scenarios)){
   #Find the column with scenario name
@@ -161,157 +235,27 @@ for(i in 1:length(scenarios)){
     select(!Year) |> 
     #Remove data before 2024
     filter(year >= 2024) |> 
-    #Remove DBEM models and EcoTroph forced by GFDL
-    filter(str_detect(fish_model, "DBEM", negate = T) & fish_model != "EcoTroph_GFDL")
+    #Extracting demersal and pelagic biomass from FEISTY and DBPM models to be later
+    filter(str_detect(fish_model, "_DEM|_PELAG")) |> 
+    #Remove FEISTY IPSL because it is not needed in this calculation
+    filter(str_detect(fish_model, "FEISTY_IPSL", negate = T))
   #Putting everything together in new data frame
-  bio_data <- bio_data |> 
+  dem_pel_bio  <- dem_pel_bio  |> 
     bind_rows(da)
 }
 
-#Checking results
-head(bio_data)
-```
-  
-Some models only have yearly biomass outputs available. We will identify these from the dataset and extract them from the spreadsheet.  
-  
-```{r}
-#Identifying models for which there is no monthly data
-yearly_models <- bio_data |> 
-  filter(is.na(proj_biomass)) |> 
-  #Removing EcoOcean because there is no yearly data available
-  filter(str_detect(fish_model, "EcoOcean", negate = T)) |> 
-  distinct(fish_model) |> 
-  pull()
-
-#Loading yearly biomass
-bio_yearly <- read.xlsx(working_data, sheet = "vsFISHMIP_Annual_tonnes", startRow = 2)
-
-#We will divide this scenario
-scenarios <- which(str_detect(names(bio_yearly), "SSP"))
-
-#Creating empty data frame to save results
-bio_year <- data.frame()
-#Create new longer data frame - Split at each scenario
-for(i in 1:length(scenarios)){
-  #Find the column with scenario name
-  start <- scenarios[i]
-  #End in the column before next scenario
-  end <- scenarios[i+1]-1
-  #If it is the last scenario, select everything until the end
-  if(is.na(end)){
-    end <- ncol(bio_yearly)
-  }
-  #Get scenario name
-  ssp <- names(bio_yearly)[start]
-  #Extract data between start and end columns
-  da <- bio_yearly[,(start+1):end] |> 
-    #Reshaping data
-    pivot_longer(!Year, names_to = "fish_model", values_to = "annual_biomass") |> 
-    #Add scenario
-    mutate(scenario = ssp) |> 
-    #Rename year so it matches monthly data
-    rename(year = Year) |> 
-    #Remove data before 2024
-    filter(year >= 2024) |> 
-    #Extract only biomass values from models for which there is no monthly data
-    filter(fish_model %in% yearly_models) |> 
-    #Reorder columns to match monthly data
-    select(scenario, fish_model, year, annual_biomass)
-  #Putting everything together in new data frame
-  bio_year <- bio_year |> 
-    bind_rows(da)
-}
-
-#Removing models without data
-bio_year <- bio_year |> 
-  drop_na(annual_biomass)
-
-#Check results
-head(bio_year)
-```
-  
-### Calculating yearly biomass for all models
-Here we add all biomass values per model, per year, and per scenario.  
-  
-```{r}
-#Yearly biomass calculations
-bio_data <- bio_data |> 
+#Calculate proportion of demersal biomass
+dem_prop <- dem_pel_bio |> 
   #Remove models with no data
   drop_na(proj_biomass) |>
-  #Calculate biomass sum by year, model and scenario
+  #Calculate mean biomass by year, model and scenario
   group_by(scenario, fish_model, year) |> 
-  summarise(annual_biomass = sum(proj_biomass, na.rm = T)) |> 
-  #Add yearly values imported above
-  bind_rows(bio_year)
-
-#Extracting demersal and pelagic biomass from FEISTY and DBPM models to be later
-dem_pel_bio <- bio_data |> 
-    filter(str_detect(fish_model, "_DEM|_PELAG"))
-
-#Removing models ending in _DEM or _PELAG because they are not used in calculations
-bio_data <- bio_data |> 
-    filter(!str_detect(fish_model, "_DEM|_PELAG"))
-
-#We need to calculate the area for the GBR. We will use the GBR shapefile to calculate this
-gbr_area <- read_sf("../Data/GBR_Outer_Boundary/GBR_outer_boundary.shp") |> 
-  st_area()
-#The area is given as m^2, but we need it in hectares
-units(gbr_area) <- make_units(ha)
-
-#Convert biomass units from tonnes to kg/ha
-bio_data <- bio_data |> 
-  mutate(biomass_kg_ha = annual_biomass*1000/as.numeric(gbr_area))
-
-#Check results
-head(bio_data)
-```
-  
-### Calculating biomass ensemble statistics
-We will calculate minimum, mean and maximum biomass for the entire ensemble between 2024 and 2100.  
-  
-```{r}
-#Calculating ensemble statistics
-bio_data <- bio_data |> 
-  group_by(scenario, year) |> 
-  summarise(fishmip_lower_bio = min(biomass_kg_ha, na.rm = T),
-            fishmip_mean_bio = mean(biomass_kg_ha, na.rm = T),
-            fishmip_upper_bio = max(biomass_kg_ha, na.rm = T))
-
-#Checking results
-head(bio_data)
-```
-    
-## 3. Comparing Fish-MIP and REEFMOD biomass estimates
-For scenarios SSP1-2.6 and SSP5-8.5, we will compare the biomass estimates calculated from REEFMOD data (step 1) and the Fish-MIP model ensemble (step 2). We will divide the ensemble mean by the biomass estimates obtained from equation 2 (`fish_biomass` column in `coral` data frame), and by the median, upper, lower bounds obtained from REEFMOD data (equations 3 to 5). This calculations will help us estimate the bias of the Fish-MIP global model ensemble.  
-  
-```{r}
-fishmip_biases <- bio_data |> 
-  #Adding REEFMOD biomass estimates
-  left_join(coral, by = c("scenario", "year")) |> 
-  #Removing coral data that is not needed
-  select(!c(coral_cover, struct_complex)) |> 
-  #Calculating Fish-MIP ensemble biases
-  mutate(mean_bias_fish_bio_fishmip = fish_biomass/fishmip_mean_bio,
-         lower_bias_reefmod_fishmip = reefmod_lower_biomass/fishmip_lower_bio,
-         mean_bias_reefmod_fishmip = reefmod_median_biomass/fishmip_mean_bio,
-         upper_bias_reefmod_fishmip = reefmod_upper_biomass/fishmip_upper_bio)
-  
-#Check results
-head(fishmip_biases)
-```
-  
-## 4. Calculating proportion of demersal biomass
-Two Fish-MIP models provide demersal and pelagic biomass estimates: FEISTY (forced by GFDL model) and DBPM (forced by IPSL model). We will use this information to calculate the ratio of the demersal component from the total consumer biomass (demersal + pelagic biomass).  
-  
-```{r}
-dem_prop <- dem_pel_bio |> 
-  #Remove FEISTY IPSL because it is not needed in this calculation
-  filter(str_detect(fish_model, "FEISTY_IPSL", negate = T)) |> 
+  summarise(mean_yr_biomass = mean(proj_biomass, na.rm = T)) |> 
   #Adding column with biomass type
   mutate(bio_type = str_split_i(fish_model, "_", i = -1),
          fish_model = str_remove(fish_model, "_DEM|_PELAG")) |> 
   #Rearranging table to calculate demersal biomass proportions
-  pivot_wider(names_from = bio_type, values_from = annual_biomass) |> 
+  pivot_wider(names_from = bio_type, values_from = mean_yr_biomass) |> 
   #Calculating proportion
   mutate(prop_dem = DEM/(DEM+PELAG))
 
