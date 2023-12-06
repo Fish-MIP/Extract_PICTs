@@ -1,27 +1,27 @@
-name,ID
-GBR,9999
-Kiribati,8441
-Kiribati,8441
-Kiribati,8441
-French Polynesia,8440
-Northern Mariana Islands,48980
-Wallis and Futuna,8454
-Vanuatu,8313
-Papua New Guinea,8324
-Papua New Guinea,8324
-Palau,8315
-Tokelau,8449
-Micronesia,8316
-Fiji,8325
-Cook Islands,8446
-Solomon Islands,8314
-Nauru,8317
-Pitcairn,8439
-American Samoa,8444
-Tonga,8448
-Guam,48957
-Tuvalu,8326
-Marshall Islands,8318
-Niue,8447
-Samoa,8445
-New Caledonia,8312
+name,ID,MRGID
+GBR,9999,9999
+Kiribati,8441,8450
+Kiribati,8441,8441
+Kiribati,8441,8488
+French Polynesia,8440,8440
+Northern Mariana Islands,48980,48980
+Wallis and Futuna,8454,8454
+Vanuatu,8313,8313
+Papua New Guinea,8324,21798
+Papua New Guinea,8324,8324
+Palau,8315,8315
+Tokelau,8449,8449
+Micronesia,8316,8316
+Fiji,8325,8325
+Cook Islands,8446,8446
+Solomon Islands,8314,8314
+Nauru,8317,8317
+Pitcairn,8439,8439
+American Samoa,8444,8444
+Tonga,8448,8448
+Guam,48957,48957
+Tuvalu,8326,8326
+Marshall Islands,8318,8318
+Niue,8447,8447
+Samoa,8445,8445
+New Caledonia,8312,8312
