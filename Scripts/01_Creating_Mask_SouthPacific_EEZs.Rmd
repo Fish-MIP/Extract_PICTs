@@ -180,7 +180,7 @@ gbr_eez_SP %>%
 ## Saving results
 We will extract the names and unique IDs for the EEZs and GBR before we move onto creating the raster masks.
 
-```{r}
+```{r, eval = F}
 #Identify EEZ and countries associated with them from extracted data files
 SP_codes <- gbr_eez_SP %>% 
   select(name, ID, MRGID) %>% 
@@ -193,7 +193,7 @@ SP_codes %>%
 
 We will save the shapefile with the South Pacific EEZs.
 
-```{r}
+```{r, eval = F}
 gbr_eez_SP %>% 
   #We will also allow shapefile to be rewritten
   st_write("../Outputs/SouthPacific_EEZ-GBR.shp", delete_layer = T)
@@ -232,14 +232,13 @@ raster_area <- function(raster_path, folder_out_path){
 ```
 
 We will now apply the function to all grids.
-```{r}
+```{r, eval = F}
 #Getting full file paths for all sample rasters
 raster_files <- list.files("../Data/Model_sample_grid/", full.names = T)
 
 #Applying function to all rasters
 raster_files %>% 
   map(\(x) raster_area(x, folder_out_path ="../Outputs"))
-
 ```
 
 ### Creating masked grid area raster
@@ -267,7 +266,7 @@ raster_mask <- function(raster_path, shp, ID, folder_out_path){
 ```
 
 Now we apply this function to all grid area rasters on disk.
-```{r}
+```{r, eval = F}
 #Getting list of grid area rasters
 area_grid <- list.files("../Outputs", pattern = "^grid.*nc$", full.names = T)
 
@@ -301,7 +300,7 @@ raster_to_csv <- function(raster_path){
 ```
 
 Applying function
-```{r}
+```{r, eval = F}
 #Getting list of mask rasters
 mask_files <- list.files("../Outputs", pattern = "^mask_.*nc$", full.names = T)
 
@@ -314,13 +313,13 @@ mask_files %>%
 The final step is to merge these two files together. We will do this in `Python`.
 
 # `Python`-based code
-```{r}
+```{r, eval = F}
 #Activating conda
 repl_python()
 ```
 
 ## Loading libraries
-```{python}
+```{python, eval = F}
 import xarray as xr
 from glob import glob
 import os
@@ -328,7 +327,7 @@ import re
 ```
 
 ## Getting file paths for area grid rasters and masks
-```{python}
+```{python, eval = F}
 #Rasters for grid area
 area_grid = sorted(glob('../Outputs/grid-area*.nc'))
 
@@ -338,7 +337,7 @@ mask_grid = sorted(glob('../Outputs/mask_*arcmin*.nc'))
 ## Creating masked raster
 Creating function to mask grid area raster.
 
-```{python}
+```{python, eval = F}
 def mask_raster(area_path, mask_path):
   #Creating name for new raster
   fp = re.split("/", area_path)
@@ -355,7 +354,7 @@ def mask_raster(area_path, mask_path):
 
 Applying function to all grid area rasters.
 
-```{python}
+```{python, eval = F}
 [mask_raster(a, mask_grid[i]) for i, a in enumerate(area_grid)]
 ```
 
