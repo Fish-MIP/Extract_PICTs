@@ -1,0 +1,7 @@
+python==3.11.3
+numpy==1.26.2
+xarray==2023.11.0
+netcdf4==1.6.3
+zarr==2.16.1
+hdf5==1.12.2
+pandas==2.1.3

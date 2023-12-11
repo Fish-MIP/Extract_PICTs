@@ -14,8 +14,21 @@ Note that all `Python` scripts (`*.py`) can be run directly in the DKRZ server. 
 The EEZs shapefile came from [VLIZ](https://doi.org/10.14284/386). You will need to download these files before you can create the mask used in this workflow to extract relevant data.  
   
 ## Running scripts in your local machine
-All `Python` scripts containing `Python` code (including files ending in `*.py`, `*.Rmd`, and `*.ipynb`) can be run in your local machine. You will need to make sure that all `Python` packages and their dependencies included in these files are installed locally. You do not need to install packages individually, instead we are including an `environment.yml` file, which has all necessary information to replicate the environment in which these scripts where developed.  
+
+### `Python` scripts
+All `Python` scripts containing `Python` code (files ending in `*.py`) can be run in your local machine, but you will need remote access to the DKRZ server to access model data. You will need to make sure that all `Python` packages and their dependencies included in these files are installed locally. You do not need to install packages individually, instead we are including an `requirements.txt` file, which has all necessary information to replicate the environment in which these scripts where developed.  
   
-You will need to have `anaconda` or `miniconda` installed in your local machine before you can use the `environment.yml` file to start the installation of all necessary packages. Open the Anaconda Prompt and type the following line: `conda env create -f environment.yml`. This process make take a few minutes. When installation is completed, you can check the environment has been successfully installed by typing the following line: `conda env list`. If the `CMIP6_data` environment is printed in your screen, you have installed all necessary `Python` packages successfully. You will need to activate this environment by typing `conda activate CMIP6_data` before you can run the `Python` scripts in this repository.  
+You will need to have `anaconda` or `miniconda` installed in your local machine before you can use the `requirements.txt` file to start the installation of all necessary packages. Open the Anaconda Prompt and type the following line: `conda create -n ENVNAME --file requirements.txt`. This process make take a few minutes. When installation is completed, you can check the environment has been successfully installed by typing the following line: `conda env list`. If the new environment is printed in your screen, you have installed all necessary `Python` packages successfully. You will need to activate this environment by typing `conda activate ENVNAME` before you can run the `Python` scripts in this repository.  
   
 **Note that you will need to install the environment in your local machine only once, but you will need to activate the environment before running any scripts.**  
+  
+### `R` scripts
+If you are using the `R` notebooks, run the following two lines in the RStudio console:  
+  
+```
+  source("installing_R_libraries.R")  
+  checking_libraries()
+```
+  
+The lines above will run a function that automatically checks if any `R` libraries used in this repository are not installed in your machine. If any libraries are missing, it will install them automatically. Bear in mind that these notebooks were developed in `R` version 4.3.0, so you may need to upgrade your `R` version if you encounter any problems during package installation.
+
