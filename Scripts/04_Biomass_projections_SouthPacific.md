@@ -72,8 +72,6 @@ library(tidyverse)
 library(openxlsx)
 library(sf)
 library(janitor)
-library(units)
-library(knitr)
 ```
 
 ## Fish-MIP models used to generate biomass projections for PICTs
@@ -591,7 +589,7 @@ bio_picts <- bio_picts |>
 
 #Saving results for later use
 bio_picts |> 
-  write_csv("average_yearly_means_picts_1985-2100.csv")
+  write_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
 
 #Checking results
 head(bio_picts)
