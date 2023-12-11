@@ -115,14 +115,10 @@ head(coral)
 Note that the REEFMOD team predicted mean coral coverage from 2024 to 2100 for the Great Barrier Reef (GBR) under five emissions scenarios: `SSP1-1.9`, `SSP1-2.6`, `SSP2-4.5`, `SSP3-7.0`, and `SSP5-8.5`. The above calculations were applied to these five projections.    
   
 ## 2. Biomass projections from Fish-MIP models
-Monthly projected biomass for the GBR under scenarios `SSP1-2.6` and `SSP5-8.5` were extracted from Fish-MIP global models using a polygon. Annual time series were calculated for Fish-MIP models forced by both GFDL and IPSL general circulation models.  
-  
-Projections from DBEM were removed from further analysis because biomass values were 100x lower than all other models. Similarly, biomass values projected by Ecotroph forced by GFDL were removed as those values were an order of magnitude higher than all other models.  
-  
-Biomass projections from all other models were used to calculate a biomass ensemble minimum, mean and maximum from 2024 to 2100.  
+Monthly projected biomass for the GBR under scenarios `SSP1-2.6` and `SSP5-8.5` were extracted from Fish-MIP global models using a polygon. Annual time series were calculated for Fish-MIP models forced by both GFDL and IPSL general circulation models. Descriptive statistics (minimum, mean and maximum) were calculated for the biomass ensemble from 2024 to 2100.  
   
 ### Extracting biomass data for the GBR
-We will extract biomass estimates for the GBR from all global Fish-MIP models using a mask derived from the GBR outer boundaries. We will then calculate mean yearly biomass for each model and scenario.  
+We will use biomass estimates from all global FishMIP models to calculate mean yearly biomass for the GBR and the EEZs of all PICTs. Mean biomass will be calculated for the `historical` run, as well as two scenarios: `SSP1-2.6` and `SSP5-8.5`. For the calculations in this section in particular we will use mean annual biomass for the GBR only. Average annual values for PICTs will be used later in this notebook.  
   
 ```{r}
 #Folder containing outputs from Fish-MIP models
@@ -130,41 +126,54 @@ base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumS
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
-#Loading gbr mask
-gbr_mask <- read_csv("../Data/GBR_Outer_Boundary/GBR_outer_boundary_mask.csv")
+#Loading PICTs EEZ mask, including GBR boundaries
+mask_base <- read_csv("../Outputs/mask_1deg.csv")
+mask_DBPM <- read_csv("../Outputs/mask_1deg_DBPM.csv")
 
-#Defining function to extract GBR biomass data from Fish-MIP outputs
-mean_yr_bio <- function(file_name, mask){
-  #Load file
-  da <- read.csv(file_name) |> 
+#Defining function to extract biomass data for all PICTs from Fish-MIP outputs
+mean_yr_bio <- function(file_name){
+  if(str_detect(file_name, "dbpm|zoomss_ipsl")){
+    mask <- mask_DBPM
+  }else{
+    mask <- mask_base
+  }
+  da <- read_csv(file_name, col_select = x:GEONAME) |> 
+    #Select data from 1985
+    filter(year >= 1985) |> 
+    #Rename coordinates
+    rename(Lon = x, Lat = y) |> 
     #Extract GBR data - by applying mask
-    right_join(mask, by = c("x", "y")) |> 
-    #Removing columns not needed
-    select(!area_m:layer) |> 
+    right_join(mask, by = c("Lon", "Lat")) |> 
     #Calculating mean yearly biomass
-    group_by(year, mem, esm, scenario) |> 
+    group_by(year, mem, esm, scenario, mask) |> 
     summarise(mean_annual_bio = mean(biomass, na.rm = T))
 }
 
 #Apply function to all Fish-MIP output files
-bio_data <- global_files |> 
-  map(\(x) mean_yr_bio(x, gbr_mask))
+bio_picts <- global_files |> 
+  map(\(x) mean_yr_bio(x))
 
 #Combine all list elements into a single data frame
-bio_data <- bio_data |> 
+bio_picts <- bio_picts |> 
   list_rbind()
 
+#Saving results for later use
+bio_picts |> 
+  write_csv("average_yearly_means_picts_1985-2100.csv")
+
 #Checking results
-head(bio_data)
+head(bio_picts)
 ```
     
 ### Calculating biomass ensemble statistics
-We will calculate minimum, mean and maximum biomass for the entire ensemble between 2024 and 2100.  
+Using GBR data only, we will calculate minimum, mean and maximum biomass for the entire ensemble between 2024 and 2100.  
   
 ```{r}
-#Calculating ensemble statistics
-bio_data <- bio_data |> 
+#Calculating ensemble statistics for GBR only
+gbr_bio <- bio_picts |> 
   ungroup() |> 
+  #Select GBR means
+  filter(mask == 9999) |> 
   #Rename scenarios to match coral data
   mutate(scenario = case_when(scenario == "ssp126" ~ "SSP1-2.6",
                               scenario == "ssp585" ~ "SSP5-8.5",
@@ -175,14 +184,14 @@ bio_data <- bio_data |>
             fishmip_upper_bio = max(mean_annual_bio, na.rm = T))
 
 #Checking results
-head(bio_data)
+head(gbr_bio)
 ```
     
-## 3. Comparing Fish-MIP and REEFMOD biomass estimates
-For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass estimates calculated from REEFMOD data (step 1) and the Fish-MIP model ensemble (step 2). We will divide the ensemble mean by the biomass estimates obtained from equation 2 (`fish_biomass` column in `coral` data frame), and by the median, upper, lower bounds obtained from REEFMOD data (equations 3 to 5). This calculations will help us estimate the bias of the Fish-MIP global model ensemble.  
+## 3. Estimating biases from FishMIP model ensemble
+For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass estimates calculated from REEFMOD data (step 1) and the Fish-MIP model ensemble for the GBR (step 2 above). We will divide the ensemble mean by the biomass estimates obtained from equation 2 (`fish_biomass` column in `coral` data frame), and by the median, upper, lower bounds obtained from REEFMOD data (equations 3 to 5 stored in the `coral` data frame). These calculations will help us estimate the bias of the Fish-MIP global model ensemble.  
   
 ```{r}
-fishmip_biases <- bio_data |> 
+fishmip_biases <- gbr_bio |> 
   #Adding REEFMOD biomass estimates
   inner_join(coral, by = c("scenario", "year")) |> 
   #Removing coral data that is not needed
@@ -192,7 +201,7 @@ fishmip_biases <- bio_data |>
          lower_bias_reefmod_fishmip = reefmod_lower_biomass/fishmip_lower_bio,
          mean_bias_reefmod_fishmip = reefmod_median_biomass/fishmip_mean_bio,
          upper_bias_reefmod_fishmip = reefmod_upper_biomass/fishmip_upper_bio)
-  
+
 #Check results
 head(fishmip_biases)
 ```
@@ -248,12 +257,11 @@ for(i in 1:length(scenarios)){
 dem_prop <- dem_pel_bio |> 
   #Remove models with no data
   drop_na(proj_biomass) |>
+  #Get information about ecoystem model, ESM and biomass type 
+  separate_wider_delim(fish_model, delim = "_", names = c("eco_model", "esm", "bio_type")) |>
   #Calculate mean biomass by year, model and scenario
-  group_by(scenario, fish_model, year) |> 
+  group_by(scenario, eco_model, esm, bio_type, year) |> 
   summarise(mean_yr_biomass = mean(proj_biomass, na.rm = T)) |> 
-  #Adding column with biomass type
-  mutate(bio_type = str_split_i(fish_model, "_", i = -1),
-         fish_model = str_remove(fish_model, "_DEM|_PELAG")) |> 
   #Rearranging table to calculate demersal biomass proportions
   pivot_wider(names_from = bio_type, values_from = mean_yr_biomass) |> 
   #Calculating proportion
@@ -263,24 +271,156 @@ dem_prop <- dem_pel_bio |>
 head(dem_prop)
 ```
   
-## 5. Bias correcting Fish-MIP ensemble biomass projections
-The bias estimates and demersal proportions calculated above will be used into calculate the biomass per hectare for each PICT for two scenarios: `SSP1-2.6` and `SSP5-8.5`. Biomass estimates from Fish-MIP global models were extracted using the EEZ boundaries of each PICT. This information was used to calculate the minimum, mean and maximum biomass estimates for the entire ensemble. Note that the same models excluded in step 3 are also excluded here. Finally, a set of bias corrected time series are then generated based on the following combinations:
+## 5. Bias corrected biomass projections calculated from Fish-MIP ensemble
+The bias estimates and demersal proportions obtained in steps 3 and 4 above will be used to estimate a corrected mean ensemble biomass values for each PICT under two emission scenarios: `SSP1-2.6` and `SSP5-8.5`.  
+  
+However, the bias corrections will not be applied per year. Instead, for each scenarios, we will use bias estimates to calculate the following: minimum, mean, median, and maximum.  
   
 ```{r echo = F}
-kable(data.frame(vs = c("Emsemble min", "Emsemble mean", "Emsemble max"),
-                 bias_based_on_Nash = rep("Biomass estimates (eq 2)", 3),
-                 bias_based_on_min = rep("REEFMOD min (eq 3)", 3),
-                 bias_based_on_mean = rep("REEFMOD median (eq 4)", 3),
-                 bias_based_on_max = rep("REEFMOD max (eq 5)", 3)))
+#Calculating descriptive statistics for bias estimates per scenario
+mean_biases <- fishmip_biases |> 
+  group_by(scenario) |> 
+  #Apply calculations to biases only
+  summarise(across(mean_bias_fish_bio_fishmip:upper_bias_reefmod_fishmip, 
+                   #Listing statistics to be calculated
+                   list(min = min, mean = mean, median = median, max = max), 
+                   #Setting column names
+                   .names = "{.col}-{.fn}")) |> 
+  #Restructuring data frame to ease corrected biomass calculations
+  pivot_longer(!scenario, names_to = "bias_type", values_to = "bias_estimate") |> 
+  #Separating bias type from statistic calculated
+  separate_wider_delim(cols = "bias_type", delim = "-", names = c("bias_type", "stat")) |> 
+  pivot_wider(names_from = bias_type, values_from = bias_estimate)
+
+#Checking result
+head(mean_biases)
 ```
   
-In each case the biomass is given as:  
+Next, we exclude biomass values from the GBR (i.e., where `mask` = 9999) from the biomass corrections. This is because we are using GBR data to calculate corrections. As mentioned above, we will calculate the minimum, mean and maximum biomass values using all FishMIP models available for each PICTs under two scenarios.   
   
-$biomass_{est} = ensemble_{biomass} \times bias_{correction}$  
+```{r}
+ensemble_bio <- bio_picts |>
+  #Removing GBR data
+  filter(mask != 9999) |> 
+   #Rename scenarios to match coral data
+  mutate(scenario = case_when(scenario == "ssp126" ~ "SSP1-2.6",
+                              scenario == "ssp585" ~ "SSP5-8.5",
+                              T ~ scenario)) |> 
+  #Calculations performed by year and EEZ
+  group_by(mask, scenario, year) |> 
+  #Apply calculations to biases only
+  summarise(across(mean_annual_bio, 
+                   #Listing statistics to be calculated
+                   list(lower = min, mean = mean, max = max), 
+                   #Setting column names
+                   .names = "{.col}-{.fn}")) |> 
+  #Restructuring data frame to ease corrected biomass calculations
+  pivot_longer(!c(mask:year), names_to = "ensemble_type", values_to = "ensemble_bio") |> 
+  #Separating bias type from statistic calculated
+  separate_wider_delim(cols = "ensemble_type", delim = "-", names = c("ensemble_type", "stat")) |> 
+  pivot_wider(names_from = ensemble_type, values_from = ensemble_bio)
+
+
+```
   
+Note that the mean bias values for scenario `SSP1-2.6` calculated in step 3 will be used to calculated the corrected biomass for the historical period and the two emissions scenarios. Otherwise, if bias values from `SSP5-8.5` are used, the historical biomass values become too divergent.  
+  
+The corrected biomass will be calculated using this formula: $biomass_{est} = ensemble_{biomass} \times bias_{correction}$.  
+  
+```{r}
+#Extracting mean biases from SSP1-2.6
+mean_biases <- mean_biases |> 
+  filter(stat == "mean" & scenario == "SSP1-2.6") |> 
+  select(ends_with("mip")) |>
+  #Matching dimension of FishMIP data to perform bias corrections
+  mutate(count = nrow(ensemble_bio)) |> 
+  uncount(count)
+
+#Join FishMIP data and mean bias
+bias_corr_biomass <- ensemble_bio |> 
+  bind_cols(mean_biases) |> 
+  #Applying corrections to biomass
+  mutate(bio_corr_nash = mean_annual_bio*mean_bias_fish_bio_fishmip,
+         bio_corr_reefmod_low = mean_annual_bio*lower_bias_reefmod_fishmip,
+         bio_corr_reefmod_mean = mean_annual_bio*mean_bias_reefmod_fishmip,
+         bio_corr_reefmod_upper = mean_annual_bio*upper_bias_reefmod_fishmip) |> 
+  #Keeping only corrected columns
+  select(!mean_annual_bio:upper_bias_reefmod_fishmip)
+
+#Checking result
+head(bias_corr_biomass)
+```
+
+  
+### Plotting corrected biomass for a single PICTs
+We will use biomass values corrected with the Nash derived equation from Kiribati (`mask` = 8441) for the historical period and scenario `SSP1-2.6` as an example.  
+  
+```{r}
+bias_corr_biomass |> 
+  ungroup() |> 
+  filter(mask == 8441 & scenario != "SSP5-8.5") |> 
+  ggplot(aes(x = year, y = bio_corr_nash, color = stat))+
+  geom_line()+
+  geom_point()+
+  theme_bw()+
+  labs(y = "Corrected fish biomass (g/m2)")+
+  theme(axis.title.x = element_blank(), legend.title = element_blank())
+
+```
+  
+## 6. Bias corrected demersal biomass calculated from Fish-MIP ensemble
+The potential demersal biomass will be calculated using the biomass corrected values from step 5 and the demersal biomass proportions obtained in step 4. We will use the following equation: $demersal_{biomass} = biomass_{est} \times proportion_{demersal}$.  
+  
+Unlike the previous step when we only used bias estimates from scenario `SSP1-2.6`, we will use the demersal biomass proportion that matches the emissions scenarios of the biomass data.  
+  
+The final time series of demersal biomass are calculated for each scenario (including the historical period) as: minimum across all the Nash based time series; maximum across all the Nash based time series; minimum across all the REEFMOD based time series; maximum across all the REEFMOD based time series.  
+
+```{r}
+#Calculating median biases
+mean_dem_prop <- dem_prop |> 
+  group_by(scenario, eco_model) |> 
+  summarize(median_dem_prop = median(prop_dem)) |> 
+  pivot_wider(names_from = eco_model, values_from = median_dem_prop) |> 
+  #Renaming columns to match spreadsheet
+  rename(max_dem = DBPM, min_dem = FEISTY) |> 
+  ungroup()
 
 
+#Defining function calculating demersal biomass per scenario
+dem_bio_sce <- function(dem_prop, corr_bio_data, emissions_scenario){
+  dem_bio_scenario <- corr_bio_data |> 
+    filter(scenario == scenario | scenario == "historical") |> 
+    pivot_longer(bio_corr_nash:bio_corr_reefmod_upper, 
+               names_to = "biomass_type", values_to = "bio_corr")
+  #Calculate corrected demersal biomass
+  dem_bio_scenario <- dem_bio_scenario |>
+    #Add demersal proportion to corrected biomass
+    bind_cols(dem_prop |>
+              filter(scenario == emissions_scenario) |>
+              select(!scenario) |>
+              uncount(nrow(dem_bio_scenario))) |>
+    #Calculate demersal proportion for each corrected type of biomass
+    mutate(dem_low_prop = bio_corr*min_dem,
+         dem_high_prop = bio_corr*max_dem) |>
+  ungroup() |>
+  select(-c(scenario, bio_corr:min_dem)) |>
+  #Rename groups before final calculations
+  mutate(biomass_type = case_when(str_detect(biomass_type, "nash", negate = T) ~ "REEFMOD",
+                                  T ~ biomass_type)) |>
+  group_by(mask, year, biomass_type) |>
+  #Calculate min and max range of corrected demersal biomass
+  summarise(low_dem_bio = min(dem_low_prop),
+            high_dem_bio = max(dem_high_prop))
+  
+  #Return corrected demersal biomass
+  return(dem_bio_scenario)
+}
 
+#Applying function to each scenario
+dem_bio_ssp126 <- dem_bio_sce(mean_dem_prop, bias_corr_biomass, "SSP1-2.6")
+dem_bio_ssp585 <- dem_bio_sce(mean_dem_prop, bias_corr_biomass, "SSP5-8.5")
 
-
-
+#Checking result
+head(dem_bio_ssp126)
+```
+  
