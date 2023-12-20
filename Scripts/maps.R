@@ -1,29 +1,4 @@
-# #Opening gbd files
-# library(rgdal)
-# library(sf)
-# library(dplyr)
-# library(ggplot2)
-# 
-# #Loading mangroves layer
-# mang <- read_sf("Habitats/Mangroves/mangroves_areas.gdb")
-# 
-# #Transforming to sf
-# mang_sf <- mang |> 
-#   st_as_sf()
-# 
-# #Plotting 
-# mang_sf |> 
-#   ggplot()+
-#   geom_sf()
-# 
-# 
-# #SF
-# st_layers("Habitats/Mangroves/mangroves_areas.gdb")
-# 
-# mang_sf <- st_read(dsn = "Habitats/Mangroves/mangroves_areas.gdb", layer = "mangroves_all_mollweide")
-
-
-
+#Libraries
 library(data.table)
 library(terra)
 library(purrr)
@@ -31,6 +6,7 @@ library(tidyterra)
 library(rnaturalearth)
 library(patchwork)
 library(sf)
+
 #Folder containing outputs from FishMIP models
 base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
 #Listing all relevant files to calculate biomass projections
