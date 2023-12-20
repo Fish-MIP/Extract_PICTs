@@ -11,42 +11,39 @@ Beth Fulton and Denisse Fierro Arcos
   (PICTs)</a>
   - <a href="#loading-relevant-libraries"
     id="toc-loading-relevant-libraries">Loading relevant libraries</a>
-  - <a
-    href="#fish-mip-models-used-to-generate-biomass-projections-for-picts"
-    id="toc-fish-mip-models-used-to-generate-biomass-projections-for-picts">Fish-MIP
-    models used to generate biomass projections for PICTs</a>
+  - <a href="#models-used-to-generate-biomass-projections-for-picts"
+    id="toc-models-used-to-generate-biomass-projections-for-picts">models
+    used to generate biomass projections for PICTs</a>
   - <a href="#1-biomass-projections-from-reefmod-data"
     id="toc-1-biomass-projections-from-reefmod-data">1. Biomass projections
     from REEFMOD data</a>
     - <a href="#relationships-between-coral-cover-and-fish-biomass"
       id="toc-relationships-between-coral-cover-and-fish-biomass">Relationships
       between coral cover and fish biomass</a>
-  - <a href="#2-biomass-projections-from-fish-mip-models"
-    id="toc-2-biomass-projections-from-fish-mip-models">2. Biomass
-    projections from Fish-MIP models</a>
-    - <a href="#extracting-biomass-data-for-the-gbr"
-      id="toc-extracting-biomass-data-for-the-gbr">Extracting biomass data for
-      the GBR</a>
-    - <a href="#calculating-biomass-ensemble-statistics"
-      id="toc-calculating-biomass-ensemble-statistics">Calculating biomass
-      ensemble statistics</a>
-  - <a href="#3-estimating-biases-from-fishmip-model-ensemble"
-    id="toc-3-estimating-biases-from-fishmip-model-ensemble">3. Estimating
-    biases from FishMIP model ensemble</a>
-  - <a href="#4-calculating-proportion-of-demersal-biomass-optional-step"
-    id="toc-4-calculating-proportion-of-demersal-biomass-optional-step">4.
-    Calculating proportion of demersal biomass (<em>optional step</em>)</a>
+  - <a href="#2-loading-biomass-estimates-from-fishmip-models"
+    id="toc-2-loading-biomass-estimates-from-fishmip-models">2. Loading
+    biomass estimates from FishMIP models</a>
+  - <a href="#3-estimating-biases-from-gbr-data"
+    id="toc-3-estimating-biases-from-gbr-data">3. Estimating biases from GBR
+    data</a>
+    - <a href="#extracting-gbr-data-and-calculating-descriptive-statistics"
+      id="toc-extracting-gbr-data-and-calculating-descriptive-statistics">Extracting
+      GBR data and calculating descriptive statistics</a>
+    - <a href="#comparing-ensemble-means-to-reefmod-biomass-estimates"
+      id="toc-comparing-ensemble-means-to-reefmod-biomass-estimates">Comparing
+      ensemble means to REEFMOD biomass estimates</a>
   - <a
-    href="#5-bias-corrected-biomass-projections-calculated-from-fish-mip-ensemble"
-    id="toc-5-bias-corrected-biomass-projections-calculated-from-fish-mip-ensemble">5.
-    Bias corrected biomass projections calculated from Fish-MIP ensemble</a>
+    href="#4-bias-corrected-biomass-projections-calculated-from-fishmip-ensemble"
+    id="toc-4-bias-corrected-biomass-projections-calculated-from-fishmip-ensemble">4.
+    Bias corrected biomass projections calculated from FishMIP ensemble</a>
     - <a href="#plotting-corrected-biomass-for-a-single-picts"
       id="toc-plotting-corrected-biomass-for-a-single-picts">Plotting
       corrected biomass for a single PICTs</a>
-  - <a
-    href="#6-bias-corrected-demersal-biomass-calculated-from-fish-mip-ensemble"
-    id="toc-6-bias-corrected-demersal-biomass-calculated-from-fish-mip-ensemble">6.
-    Bias corrected demersal biomass calculated from Fish-MIP ensemble</a>
+  - <a href="#5-calculating-biomass-estimates-under-scenario-ssp2-45"
+    id="toc-5-calculating-biomass-estimates-under-scenario-ssp2-45">5.
+    Calculating biomass estimates under scenario <code>SSP2-4.5</code></a>
+  - <a href="#two-model-approach" id="toc-two-model-approach">Two model
+    approach</a>
 
 # Generating biomass projections for Pacific Islands Countries and Territories (PICTs)
 
@@ -63,43 +60,42 @@ workflow uses relationships observed in coral reefs between coral cover
 and fish biomass, as well as projections of coral cover in the Great
 Barrier Reef and fish biomass in the Pacific from the [Fisheries and
 Marine Ecosystem Model Intercomparison Project
-(Fish-MIP)](https://fish-mip.github.io/).
+(FishMIP)](https://fish-mip.github.io/).
 
 ## Loading relevant libraries
 
 ``` r
 library(tidyverse)
 library(openxlsx)
-library(sf)
 library(janitor)
+library(mgcv)
 ```
 
-## Fish-MIP models used to generate biomass projections for PICTs
+## models used to generate biomass projections for PICTs
 
 To generate biomass projections for PICTs, we used biomass estimates
 produced by six different fisheries models:  
-1. [APECOSM](https://apecosm.org/) - Apex Predators ECOSystem Model,
+1. [APECOSM](https://apecosm.org/): Apex Predators ECOSystem Model,
 which represents the spatialized dynamics of open ocean pelagic
 ecosystems in the global ocean.  
-2. [BOATS](https://earthsystemdynamics.org/models/boats/) - BiOeconomic
+2. [BOATS](https://earthsystemdynamics.org/models/boats/): BiOeconomic
 mArine Trophic Size-spectrum model simulates the global fishery as a
 coupled ecological-economic system.  
-3.
-[DBPM](https://github.com/Benthic-Pelagic-Size-Spectrum-Model/dbpm_isimip_2) -
-The Dynamic Benthic Pelagic Model is a dynamic size spectrum model for
-modelling the coupling “pelagic” size-based predators and “benthic”
-detritivores that share a unstructured resource pool (detritus).  
-4. [EcoTroph](https://doi.org/10.1016/j.ecolmodel.2009.07.031) -
-EcoTroph models the functioning of marine ecosystems as flows of biomass
-from low to high trophic levels, so as to quantify easily the impacts of
-fishing at an ecosystem scale.  
-5. [Macroecological](https://doi.org/10.1371/journal.pone.0133794) -
+3. [DBPM](https://bitly.ws/36wjv): The Dynamic Benthic Pelagic Model is
+a dynamic size spectrum model for modelling the coupling “pelagic”
+size-based predators and “benthic” detritivores that share a
+unstructured resource pool (detritus).  
+4. [EcoTroph](https://doi.org/10.1016/j.ecolmodel.2009.07.031): EcoTroph
+models the functioning of marine ecosystems as flows of biomass from low
+to high trophic levels, so as to quantify easily the impacts of fishing
+at an ecosystem scale.  
+5. [Macroecological](https://doi.org/10.1371/journal.pone.0133794):
 Macroecological is a static equilibrium model, which uses ecological and
 metabolic scaling theory to predict mean size composition and abundance
 of animals (including fish).  
-6. [ZooMSS](https://doi.org/10.1016/j.ecolmodel.2020.109265) - The
+6. [ZooMSS](https://doi.org/10.1016/j.ecolmodel.2020.109265): The
 Zooplankton Model of Size Spectra is a functional size-spectrum model of
-the marine ecosystem to resolve phytoplankton, nine zooplankton
+the marine ecosystem to resolve phytoplankton, nine (9) zooplankton
 functional groups (heterotrophic flagellates and ciliates, omnivorous
 and carnivorous copepods, larvaceans, euphausiids, salps, chaetognaths
 and jellyfish) and three size-based fish groups.
@@ -151,19 +147,6 @@ head(coral)
     ## 5  2024 SSP5-8.5        18.0           1.84
     ## 6  2025 SSP1-1.9        18.0           1.84
 
-``` r
-#Visualising data
-coral |> 
-  ggplot(aes(x = year, y = coral_cover, colour = scenario, linetype = scenario))+
-  geom_line()+
-  theme_bw()+
-  labs(y = "Coral cover (%)")+
-  theme(axis.title.x = element_blank(), 
-        legend.position = "top", legend.direction = "horizontal")
-```
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
-
 **Equation 2**: Fish biomass ($kg \times ha^{-1}$) as a function of
 structural complexity ($r^2$ = 0.6102). Note that a logistic is a little
 poorer fit, so using a quadratic on the argument that once a reef
@@ -171,7 +154,7 @@ habitat is too complex, it loses places for fish to sit.
 $fish_{biomass} = -2294.6 \times {struct_{complexity}}^2 + 8961.1 \times struct_{complexity} - 6843.6$
 
 In this step, we will also convert fish biomass from $kg \times ha^{-1}$
-to $g \times m^{-2}$, so it matches the outputs of Fish-MIP models.
+to $g \times m^{-2}$, so it matches the outputs of FishMIP models.
 
 ``` r
 #Calculating fish biomass
@@ -238,56 +221,31 @@ Note that the REEFMOD team predicted mean coral coverage from 2024 to
 `SSP1-1.9`, `SSP1-2.6`, `SSP2-4.5`, `SSP3-7.0`, and `SSP5-8.5`. The
 above calculations were applied to these five projections.
 
-## 2. Biomass projections from Fish-MIP models
+## 2. Loading biomass estimates from FishMIP models
 
-Monthly projected biomass for the GBR under scenarios `SSP1-2.6` and
-`SSP5-8.5` were extracted from Fish-MIP global models using a polygon.
-Annual time series were calculated for Fish-MIP models forced by both
-GFDL and IPSL general circulation models. Descriptive statistics
-(minimum, mean and maximum) were calculated for the biomass ensemble
-from 2024 to 2100.
+Global monthly biomass estimates for the historical period (1985-2014)
+and two emissions scenarios `SSP1-2.6` and `SSP5-8.5` covering the
+period between 2015 and 2100 were obtained from [six (6) FishMIP
+models](#fish-mip-models-used-to-generate-biomass-projections-for-picts)
+forced by both GFDL and IPSL general circulation models. Annual time
+series per PICT were calculated for each of the FishMIP models.
 
-### Extracting biomass data for the GBR
-
-We will use biomass estimates from all global FishMIP models to
-calculate mean yearly biomass for the GBR and the EEZs of all PICTs.
-Mean biomass will be calculated for the `historical` run, as well as two
-scenarios: `SSP1-2.6` and `SSP5-8.5`. For the calculations in this
-section in particular we will use mean annual biomass for the GBR only.
-Average annual values for PICTs will be used later in this notebook.
+**Note:** To run the code below, you will need access to the monthly
+biomass estimates available in the FishMIP server. If you do not have
+access to the server, we are providing the annual means in the code
+chunk.
 
 ``` r
-#Folder containing outputs from Fish-MIP models
+#Folder containing outputs from FishMIP models
 base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
-#Loading PICTs EEZ mask, including GBR boundaries
+#Loading PICTs EEZ mask and GBR boundaries (two different grids)
 mask_base <- read_csv("../Outputs/mask_1deg.csv")
-```
-
-    ## Rows: 2356 Columns: 3
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## dbl (3): Lon, Lat, mask
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
 mask_DBPM <- read_csv("../Outputs/mask_1deg_DBPM.csv")
-```
 
-    ## Rows: 2356 Columns: 3
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## dbl (3): Lon, Lat, mask
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
-#Defining function to extract biomass data for all PICTs from Fish-MIP outputs
+#Defining function to extract biomass data for all PICTs from FishMIP outputs
 mean_yr_bio <- function(file_name){
   if(str_detect(file_name, "dbpm|zoomss_ipsl")){
     mask <- mask_DBPM
@@ -306,283 +264,10 @@ mean_yr_bio <- function(file_name){
     summarise(mean_annual_bio = mean(biomass, na.rm = T))
 }
 
-#Apply function to all Fish-MIP output files
+#Apply function to all FishMIP output files
 bio_picts <- global_files |> 
   map(\(x) mean_yr_bio(x))
-```
 
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 4212000 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-    ## Rows: 5572800 Columns: 10
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## chr (4): mem, esm, scenario, GEONAME
-    ## dbl (6): x, y, year, biomass, area_m, eez
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    ## `summarise()` has grouped output by 'year', 'mem', 'esm', 'scenario'. You can override using the `.groups` argument.
-
-``` r
 #Combine all list elements into a single data frame
 bio_picts <- bio_picts |> 
   list_rbind()
@@ -595,21 +280,35 @@ bio_picts |>
 head(bio_picts)
 ```
 
-    ## # A tibble: 6 × 6
-    ## # Groups:   year, mem, esm, scenario [1]
-    ##    year mem     esm   scenario    mask mean_annual_bio
-    ##   <dbl> <chr>   <chr> <chr>      <dbl>           <dbl>
-    ## 1  1985 apecosm ipsl  historical  8312           0.749
-    ## 2  1985 apecosm ipsl  historical  8313           0.714
-    ## 3  1985 apecosm ipsl  historical  8314           1.61 
-    ## 4  1985 apecosm ipsl  historical  8315           3.05 
-    ## 5  1985 apecosm ipsl  historical  8316           2.15 
-    ## 6  1985 apecosm ipsl  historical  8317           2.47
+If you do not have access to the monthly biomass estimates in the
+FishMIP server, you can load the annual means we calculated in the step
+above and continue to run all other code chunks in this notebook.
 
-### Calculating biomass ensemble statistics
+``` r
+bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
+```
 
-Using GBR data only, we will calculate minimum, mean and maximum biomass
-for the entire ensemble between 2024 and 2100.
+    ## Rows: 46460 Columns: 6
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (3): mem, esm, scenario
+    ## dbl (3): year, mask, mean_annual_bio
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+## 3. Estimating biases from GBR data
+
+For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass
+estimates calculated from REEFMOD data (step 1) and the FishMIP model
+ensemble for the GBR only (step 2 above). We will divide the ensemble
+mean by the biomass estimates obtained from equation 2 (`fish_biomass`
+column in `coral` data frame), and by the median, upper, lower bounds
+obtained from REEFMOD data (equations 3 to 5 stored in the `coral` data
+frame). These calculations will help us estimate the bias of the FishMIP
+global model ensemble.
+
+### Extracting GBR data and calculating descriptive statistics
 
 ``` r
 #Calculating ensemble statistics for GBR only
@@ -646,16 +345,9 @@ head(gbr_bio)
     ## 5 SSP1-2.6  2019             0.668             4.47              14.2
     ## 6 SSP1-2.6  2020             0.667             4.78              14.9
 
-## 3. Estimating biases from FishMIP model ensemble
+### Comparing ensemble means to REEFMOD biomass estimates
 
-For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass
-estimates calculated from REEFMOD data (step 1) and the Fish-MIP model
-ensemble for the GBR (step 2 above). We will divide the ensemble mean by
-the biomass estimates obtained from equation 2 (`fish_biomass` column in
-`coral` data frame), and by the median, upper, lower bounds obtained
-from REEFMOD data (equations 3 to 5 stored in the `coral` data frame).
-These calculations will help us estimate the bias of the Fish-MIP global
-model ensemble.
+This will give us a bias correction for the model ensemble.
 
 ``` r
 fishmip_biases <- gbr_bio |> 
@@ -663,7 +355,7 @@ fishmip_biases <- gbr_bio |>
   inner_join(coral, by = c("scenario", "year")) |> 
   #Removing coral data that is not needed
   select(!c(coral_cover, struct_complex)) |> 
-  #Calculating Fish-MIP ensemble biases
+  #Calculating FishMIP ensemble biases
   mutate(mean_bias_fish_bio_fishmip = fish_biomass/fishmip_mean_bio,
          lower_bias_reefmod_fishmip = reefmod_lower_biomass/fishmip_lower_bio,
          mean_bias_reefmod_fishmip = reefmod_median_biomass/fishmip_mean_bio,
@@ -688,96 +380,11 @@ head(fishmip_biases)
     ## #   mean_bias_fish_bio_fishmip <dbl>, lower_bias_reefmod_fishmip <dbl>,
     ## #   mean_bias_reefmod_fishmip <dbl>, upper_bias_reefmod_fishmip <dbl>
 
-## 4. Calculating proportion of demersal biomass (*optional step*)
+## 4. Bias corrected biomass projections calculated from FishMIP ensemble
 
-Two Fish-MIP models provide demersal and pelagic biomass estimates:
-FEISTY (forced by GFDL model) and DBPM (forced by IPSL model). We will
-use this information to calculate the ratio of the demersal component
-from the total consumer biomass (demersal + pelagic biomass).
-
-``` r
-#Load monthly biomass
-bio_data_all_models <- read.xlsx(working_data, sheet = "vsFISHMIP All TimeSteps", startRow = 2, detectDates = T)
-
-#We will divide this scenario
-scenarios <- which(str_detect(names(bio_data_all_models), "SSP"))
-
-#Creating empty data frame to save results
-dem_pel_bio <- data.frame()
-#Create new longer data frame - Split at each scenario
-for(i in 1:length(scenarios)){
-  #Find the column with scenario name
-  start <- scenarios[i]
-  #End in the column before next scenario
-  end <- scenarios[i+1]-1
-  #If it is the last scenario, select everything until the end
-  if(is.na(end)){
-    end <- ncol(bio_data_all_models)
-  }
-  #Get scenario name
-  ssp <- names(bio_data_all_models)[start]
-  #Extract data between start and end columns
-  da <- bio_data_all_models[,(start+1):end] |> 
-    #Reshaping data
-    pivot_longer(!Year, names_to = "fish_model", values_to = "proj_biomass") |> 
-    #Add scenario
-    mutate(scenario = ssp,
-           #Get year from date
-           year = year(Year),
-           #Get month from date
-           month = month(Year)) |> 
-    #Remove date (incorrectly labelled as Year)
-    select(!Year) |> 
-    #Remove data before 2024
-    filter(year >= 2024) |> 
-    #Extracting demersal and pelagic biomass from FEISTY and DBPM models to be later
-    filter(str_detect(fish_model, "_DEM|_PELAG")) |> 
-    #Remove FEISTY IPSL because it is not needed in this calculation
-    filter(str_detect(fish_model, "FEISTY_IPSL", negate = T))
-  #Putting everything together in new data frame
-  dem_pel_bio  <- dem_pel_bio  |> 
-    bind_rows(da)
-}
-
-#Calculate proportion of demersal biomass
-dem_prop <- dem_pel_bio |> 
-  #Remove models with no data
-  drop_na(proj_biomass) |>
-  #Get information about ecoystem model, ESM and biomass type 
-  separate_wider_delim(fish_model, delim = "_", names = c("eco_model", "esm", "bio_type")) |>
-  #Calculate mean biomass by year, model and scenario
-  group_by(scenario, eco_model, esm, bio_type, year) |> 
-  summarise(mean_yr_biomass = mean(proj_biomass, na.rm = T)) |> 
-  #Rearranging table to calculate demersal biomass proportions
-  pivot_wider(names_from = bio_type, values_from = mean_yr_biomass) |> 
-  #Calculating proportion
-  mutate(prop_dem = DEM/(DEM+PELAG))
-```
-
-    ## `summarise()` has grouped output by 'scenario', 'eco_model', 'esm', 'bio_type'.
-    ## You can override using the `.groups` argument.
-
-``` r
-#Checking result
-head(dem_prop)
-```
-
-    ## # A tibble: 6 × 7
-    ## # Groups:   scenario, eco_model, esm [1]
-    ##   scenario eco_model esm    year      DEM   PELAG prop_dem
-    ##   <chr>    <chr>     <chr> <dbl>    <dbl>   <dbl>    <dbl>
-    ## 1 SSP1-2.6 DBPM      IPSL   2024 1827114. 273856.    0.870
-    ## 2 SSP1-2.6 DBPM      IPSL   2025 1896566. 273531.    0.874
-    ## 3 SSP1-2.6 DBPM      IPSL   2026 1870888. 273334.    0.873
-    ## 4 SSP1-2.6 DBPM      IPSL   2027 1873999. 273067.    0.873
-    ## 5 SSP1-2.6 DBPM      IPSL   2028 1898136. 275882.    0.873
-    ## 6 SSP1-2.6 DBPM      IPSL   2029 1828738. 279965.    0.867
-
-## 5. Bias corrected biomass projections calculated from Fish-MIP ensemble
-
-The bias estimates and demersal proportions obtained in steps 3 and 4
-above will be used to estimate a corrected mean ensemble biomass values
-for each PICT under two emission scenarios: `SSP1-2.6` and `SSP5-8.5`.
+The bias estimates obtained in step 3 above will be used to estimate a
+corrected mean ensemble biomass values for each PICT under two emission
+scenarios: `SSP1-2.6` and `SSP5-8.5`.
 
 However, the bias corrections will not be applied per year. Instead, for
 each scenarios, we will use bias estimates to calculate the following:
@@ -827,6 +434,22 @@ ensemble_bio <- bio_picts |>
     ## `summarise()` has grouped output by 'mask', 'scenario'. You can override using
     ## the `.groups` argument.
 
+``` r
+#Checking results
+head(ensemble_bio)
+```
+
+    ## # A tibble: 6 × 5
+    ## # Groups:   mask, scenario [1]
+    ##    mask scenario  year stat  mean_annual_bio
+    ##   <dbl> <chr>    <dbl> <chr>           <dbl>
+    ## 1  8312 SSP1-2.6  2015 lower           0.850
+    ## 2  8312 SSP1-2.6  2015 mean            4.10 
+    ## 3  8312 SSP1-2.6  2015 max             7.80 
+    ## 4  8312 SSP1-2.6  2016 lower           0.780
+    ## 5  8312 SSP1-2.6  2016 mean            4.55 
+    ## 6  8312 SSP1-2.6  2016 max             7.96
+
 Note that the mean bias values for scenario `SSP1-2.6` calculated in
 step 3 will be used to calculated the corrected biomass for the
 historical period and the two emissions scenarios. Otherwise, if bias
@@ -855,6 +478,10 @@ bias_corr_biomass <- ensemble_bio |>
          bio_corr_reefmod_upper = mean_annual_bio*upper_bias_reefmod_fishmip) |> 
   #Keeping only corrected columns
   select(!mean_annual_bio:upper_bias_reefmod_fishmip)
+
+#Saving outputs
+bias_corr_biomass |> 
+  write_csv("../Outputs/yearly_corrected_biomass_picts_1985-2100.csv")
 
 #Checking result
 head(bias_corr_biomass)
@@ -890,96 +517,238 @@ bias_corr_biomass |>
   theme(axis.title.x = element_blank(), legend.title = element_blank())
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-## 6. Bias corrected demersal biomass calculated from Fish-MIP ensemble
+## 5. Calculating biomass estimates under scenario `SSP2-4.5`
 
-The potential demersal biomass will be calculated using the biomass
-corrected values from step 5 and the demersal biomass proportions
-obtained in step 4. We will use the following equation:
-$demersal_{biomass} = biomass_{est} \times proportion_{demersal}$.
+No FishMIP models estimated biomass under scenario `SSP2-4.5`, but we
+will attempt to estimate fish biomass under this scenario using coral
+cover estimates (used to derived fish biomass at the beginning of this
+notebook) scenarios `SSP1-2.6` and `SSP5-8.5`. Below we described the
+steps we took to achieve this:
 
-Unlike the previous step when we only used bias estimates from scenario
-`SSP1-2.6`, we will use the demersal biomass proportion that matches the
-emissions scenarios of the biomass data.
-
-The final time series of demersal biomass are calculated for each
-scenario (including the historical period) as: minimum across all the
-Nash based time series; maximum across all the Nash based time series;
-minimum across all the REEFMOD based time series; maximum across all the
-REEFMOD based time series.
+1.  Plot coral cover under the three scenarios: `SSP1-2.6`, `SSP2-4.5`,
+    and `SSP5-8.5`.
 
 ``` r
-#Calculating median biases
-mean_dem_prop <- dem_prop |> 
-  group_by(scenario, eco_model) |> 
-  summarize(median_dem_prop = median(prop_dem)) |> 
-  pivot_wider(names_from = eco_model, values_from = median_dem_prop) |> 
-  #Renaming columns to match spreadsheet
-  rename(max_dem = DBPM, min_dem = FEISTY) |> 
+#Visualising data
+p1 <- coral |> 
+  #Selecting three relevant scenarios
+  filter(str_detect(scenario, "2.6|4.5|8.5")) |> 
+  #Plot coral cover for all scenarios
+  ggplot(aes(x = year, y = coral_cover, colour = scenario, linetype = scenario))+
+  geom_line()+
+  theme_bw()+
+  labs(y = "Coral cover (%)")+
+  theme(axis.title.x = element_blank(), 
+        legend.position = "top", legend.direction = "horizontal")
+p1
+```
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+2.  We can see that scenario `SSP2-4.5` falls somewhere in the middle of
+    the two, so we will calculate a mean of scenarios `SSP1-2.6` and
+    `SSP5-8.5`. We will add this average coral cover to the above plot
+    (black line) to check how well it represents the data.
+
+``` r
+mean_26_85 <- coral |> 
+  #Selecting three relevant scenarios
+  filter(str_detect(scenario, "2.6|4.5|8.5")) |> 
+  #Keeping only columns between year and coral cover
+  select(year:coral_cover) |>
+  #Reorganise data, so coral cover is now labelled by scenario
+  pivot_wider(names_from = scenario, values_from = coral_cover) |> 
+  #Clean up column names
+  clean_names() |> 
+  rowwise() |> 
+  mutate(mean_cover = mean(c(ssp1_2_6, ssp5_8_5)))
+
+p1+
+  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_cover))
+```
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+This averaged coral cover (black line) is closer to coral cover under
+scenario `SSP2-4.5` (green dashed line), particularly after year 2060,
+than either of the two scenarios, but it is not a perfect match.
+
+3.  We will need to apply a correction, which we will derive from the
+    proportion between coral cover under scenario `SSP2-4.5` and the
+    mean coral cover under the other two scenarios.
+
+``` r
+mean_26_85 <- mean_26_85 |> 
+  #Calculating proportions
+  mutate(prop = ssp2_4_5/mean_cover) |> 
+  #Removing grouping by row
+  ungroup()
+
+#Checking results
+head(mean_26_85)
+```
+
+    ## # A tibble: 6 × 6
+    ##    year ssp1_2_6 ssp2_4_5 ssp5_8_5 mean_cover  prop
+    ##   <dbl>    <dbl>    <dbl>    <dbl>      <dbl> <dbl>
+    ## 1  2024     17.9     18.2     18.0       18.0  1.01
+    ## 2  2025     18.0     18.3     18.1       18.0  1.02
+    ## 3  2026     17.7     18.3     18.0       17.9  1.03
+    ## 4  2027     17.4     18.3     17.9       17.7  1.04
+    ## 5  2028     17.2     18.2     17.6       17.4  1.05
+    ## 6  2029     17.5     18.8     18.0       17.8  1.06
+
+We can now check that by multiplying the mean coral cover by our
+correction (`prop` column), we get an exact match of the coral cover
+under scenario `SSP2-4.5`.
+
+``` r
+mean_26_85 |> 
+  #Applying correction
+  mutate(corrected = mean_cover*prop) |> 
+  #Plotting year along the x axis
+  ggplot(aes(x = year))+
+  #Plotting corrected mean as a red line
+  geom_line(aes(y = corrected), color = "red")+
+  #Plotting original coral cover under scenario `SSP2-4.5` as points
+  geom_point(aes(y = ssp2_4_5))+
+  theme_bw()
+```
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+We can see that our corrected mean coral cover (red line) now perfectly
+matches the coral cover under scenario `SSP2-4.5` (black points). We
+will not use this proportions as corrections to estimate biomass under
+scenario `SSP2-4.5` from FishMIP data, instead we will apply a
+generalised additive model (GAM) to get an approximate of these
+proportions.
+
+4.  Use GAM to calculate corrections per year.
+
+``` r
+#Corrections will be estimated for each year. We will apply a smoother to year 
+#to allow GAM to become a polynomial if it fits the data better
+gam_mod <- gam(prop ~ s(year, k = 6), data = mean_26_85)
+
+#Now we will apply GAM model to get the corrections
+mean_26_85 <- mean_26_85 |> 
+  mutate(correction = as.vector(predict(gam_mod, data = mean_26_85, 
+                                        type = "response")))
+
+#Plotting data
+mean_26_85 |> 
+  #Setting year as x axis
+  ggplot(aes(x = year))+
+  #Plotting original proportions as points
+  geom_point(aes(y = prop))+
+  #Plotting new corrections as a line
+  geom_line(aes(y = correction), color = "red")+
+  theme_bw()
+```
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+Finally, we can calculate the coral cover under scenario `SSP2-4.5`
+using the newly calculated correction and the mean coral cover from
+scenarios `SSP1-2.6` and `SSP5-8.5`.
+
+``` r
+mean_26_85 |> 
+  mutate(corrected_mean = mean_cover*correction) |> 
+  ggplot(aes(x = year))+
+  geom_point(aes(y = ssp2_4_5))+
+  geom_line(aes(y = corrected_mean), color = "red")+
+  theme_bw()
+```
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+5.  Finally, we will apply this correction to FishMIP data to calculate
+    fish biomass estimates under scenario `SSP2-4.5`.
+
+``` r
+biomass_ssp245 <- bio_picts |> 
+  #select data for future scenarios only
+  filter(scenario != "historical") |> 
+  pivot_wider(names_from = scenario, values_from = mean_annual_bio) |> 
+  rowwise() |> 
+  mutate(mean_scenarios = mean(c(ssp126, ssp585))) |> 
+  ungroup() 
+
+biomass_ssp245 <- biomass_ssp245 |> 
+  mutate(correction = as.vector(predict(gam_mod, biomass_ssp245["year"])),
+         ssp245_est = mean_scenarios*correction) |> 
+  select(!correction) |> 
+  #Calculations performed by year and EEZ
+  group_by(mask, year) |>
+  summarise(across(ssp126:ssp245_est, 
+                   #Listing statistics to be calculated
+                   list(min = min, median = median, max = max), 
+                   #Setting column names
+                   .names = "{.col}-{.fn}")) |> 
   ungroup()
 ```
 
-    ## `summarise()` has grouped output by 'scenario'. You can override using the
+    ## `summarise()` has grouped output by 'mask'. You can override using the
     ## `.groups` argument.
 
 ``` r
-#Defining function calculating demersal biomass per scenario
-dem_bio_sce <- function(dem_prop, corr_bio_data, emissions_scenario){
-  dem_bio_scenario <- corr_bio_data |> 
-    filter(scenario == scenario | scenario == "historical") |> 
-    pivot_longer(bio_corr_nash:bio_corr_reefmod_upper, 
-               names_to = "biomass_type", values_to = "bio_corr")
-  #Calculate corrected demersal biomass
-  dem_bio_scenario <- dem_bio_scenario |>
-    #Add demersal proportion to corrected biomass
-    bind_cols(dem_prop |>
-              filter(scenario == emissions_scenario) |>
-              select(!scenario) |>
-              uncount(nrow(dem_bio_scenario))) |>
-    #Calculate demersal proportion for each corrected type of biomass
-    mutate(dem_low_prop = bio_corr*min_dem,
-         dem_high_prop = bio_corr*max_dem) |>
-  ungroup() |>
-  select(-c(scenario, bio_corr:min_dem)) |>
-  #Rename groups before final calculations
-  mutate(biomass_type = case_when(str_detect(biomass_type, "nash", negate = T) ~ "REEFMOD",
-                                  T ~ biomass_type)) |>
-  group_by(mask, year, biomass_type) |>
-  #Calculate min and max range of corrected demersal biomass
-  summarise(low_dem_bio = min(dem_low_prop),
-            high_dem_bio = max(dem_high_prop))
-  
-  #Return corrected demersal biomass
-  return(dem_bio_scenario)
-}
-
-#Applying function to each scenario
-dem_bio_ssp126 <- dem_bio_sce(mean_dem_prop, bias_corr_biomass, "SSP1-2.6")
+biomass_ssp245 |> 
+  filter(mask < 8316) |> 
+  select(mask, year, ends_with("median")) |> 
+  pivot_longer(ends_with("median"), names_to = "scenario", values_to = "biomass") |> 
+  ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
+  geom_line()+
+  facet_wrap(~mask)+
+  theme_bw()
 ```
 
-    ## `summarise()` has grouped output by 'mask', 'year'. You can override using the
-    ## `.groups` argument.
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+## Two model approach
 
 ``` r
-dem_bio_ssp585 <- dem_bio_sce(mean_dem_prop, bias_corr_biomass, "SSP5-8.5")
+mod1 <- gam(prop ~ s(year, k = 2), data = mean_26_85 |> filter(year <= 2052))
 ```
 
-    ## `summarise()` has grouped output by 'mask', 'year'. You can override using the
-    ## `.groups` argument.
+    ## Warning in smooth.construct.tp.smooth.spec(object, dk$data, dk$knots): basis dimension, k, increased to minimum possible
 
 ``` r
-#Checking result
-head(dem_bio_ssp126)
+pred1 <- as.vector(predict(mod1, mean_26_85 |> filter(year <= 2052)))
+
+mod2 <- gam(prop ~ s(year, k = 4), data = mean_26_85 |> filter(year > 2052))
+pred2 <- as.vector(predict(mod2, mean_26_85 |> filter(year > 2052)))
+
+mean_26_85 |> 
+  mutate(pred2 = c(pred1, pred2)) |> 
+  ggplot(aes(x = year))+
+  geom_line(aes(y = prop))+
+  geom_line(aes(y = pred2), color = "red")
 ```
 
-    ## # A tibble: 6 × 5
-    ## # Groups:   mask, year [3]
-    ##    mask  year biomass_type  low_dem_bio high_dem_bio
-    ##   <dbl> <dbl> <chr>               <dbl>        <dbl>
-    ## 1  8312  1985 REEFMOD              5.21         281.
-    ## 2  8312  1985 bio_corr_nash       18.5          246.
-    ## 3  8312  1986 REEFMOD              5.87         301.
-    ## 4  8312  1986 bio_corr_nash       20.8          264.
-    ## 5  8312  1987 REEFMOD              6.68         355.
-    ## 6  8312  1987 bio_corr_nash       23.7          311.
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+``` r
+pred1 <- as.vector(predict(mod1, biomass_ssp245 |> distinct(year) |> filter(year <= 2052)))
+preds <- data.frame(year = biomass_ssp245 |> distinct(year), pred = c(pred1, pred2))
+
+biomass_ssp245 |> 
+  left_join(preds, by = "year") |> 
+  mutate(corr_mean = `mean_scenarios-median`*pred) |> 
+  select(mask, year, ends_with("median"), corr_mean) |> 
+  pivot_longer(cols = `ssp126-median`:corr_mean, names_to = "scenario", values_to = "biomass") |> 
+  group_by(year, mask, scenario) |> 
+  summarise(mean = mean(biomass)) |> 
+  filter(mask < 8316) |> 
+  ggplot(aes(x = year, y = mean, color = scenario))+
+  geom_line()+
+  facet_wrap(~mask)
+```
+
+    ## `summarise()` has grouped output by 'year', 'mask'. You can override using the
+    ## `.groups` argument.
+
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
