@@ -42,8 +42,6 @@ Beth Fulton and Denisse Fierro Arcos
   - <a href="#5-calculating-biomass-estimates-under-scenario-ssp2-45"
     id="toc-5-calculating-biomass-estimates-under-scenario-ssp2-45">5.
     Calculating biomass estimates under scenario <code>SSP2-4.5</code></a>
-  - <a href="#two-model-approach" id="toc-two-model-approach">Two model
-    approach</a>
 
 # Generating biomass projections for Pacific Islands Countries and Territories (PICTs)
 
@@ -68,7 +66,6 @@ Marine Ecosystem Model Intercomparison Project
 library(tidyverse)
 library(openxlsx)
 library(janitor)
-library(mgcv)
 ```
 
 ## models used to generate biomass projections for PICTs
@@ -521,14 +518,17 @@ bias_corr_biomass |>
 
 ## 5. Calculating biomass estimates under scenario `SSP2-4.5`
 
-No FishMIP models estimated biomass under scenario `SSP2-4.5`, but we
-will attempt to estimate fish biomass under this scenario using coral
-cover estimates (used to derived fish biomass at the beginning of this
-notebook) scenarios `SSP1-2.6` and `SSP5-8.5`. Below we described the
-steps we took to achieve this:
+FishMIP models provide biomass estimates under a low emissions
+(`SSP1-2.6`) and a high emissions (`SSP5-8.5`) scenarios. None of them
+provide biomass estimates under a moderate emissions scenario
+(`SSP2-4.5`). We will provide a rough estimate of biomass under
+`SSP2-4.5` by calculating the mean between the low (`SSP1-2.6`) and high
+(`SSP5-8.5`) emissions scenarios.
 
-1.  Plot coral cover under the three scenarios: `SSP1-2.6`, `SSP2-4.5`,
-    and `SSP5-8.5`.
+We justify the use of this approach based on the REEFMOD data, which
+includes estimates of coral cover under the three scenarios of interest:
+`SSP1-2.6`, `SSP2-4.5`, and `SSP5-8.5`. Below, we plot coral cover under
+the three scenarios.
 
 ``` r
 #Visualising data
@@ -547,10 +547,9 @@ p1
 
 ![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-2.  We can see that scenario `SSP2-4.5` falls somewhere in the middle of
-    the two, so we will calculate a mean of scenarios `SSP1-2.6` and
-    `SSP5-8.5`. We will add this average coral cover to the above plot
-    (black line) to check how well it represents the data.
+We will now calculate the mean biomass estimated under of scenarios
+`SSP1-2.6` and `SSP5-8.5`. We will add this to our figure as a black
+line to check how well it represents the moderate emissions data.
 
 ``` r
 mean_26_85 <- coral |> 
@@ -563,128 +562,43 @@ mean_26_85 <- coral |>
   #Clean up column names
   clean_names() |> 
   rowwise() |> 
-  mutate(mean_cover = mean(c(ssp1_2_6, ssp5_8_5)))
+  mutate(mean_scenarios = mean(c(ssp1_2_6, ssp5_8_5))) |> 
+  ungroup()
 
 p1+
-  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_cover))
+  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_scenarios))
 ```
 
 ![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
-This averaged coral cover (black line) is closer to coral cover under
-scenario `SSP2-4.5` (green dashed line), particularly after year 2060,
-than either of the two scenarios, but it is not a perfect match.
+The averaged coral cover (black line) is closer to coral cover under
+scenario `SSP2-4.5` (green dashed line) than either of the two
+scenarios. This approach is simple, but note that before 2060, it tends
+to underestimate coral cover. However, after 2060 coral cover is
+overestimated. We expect similar biases when calculating fish biomass
+under the moderate emissions scenario.
 
-3.  We will need to apply a correction, which we will derive from the
-    proportion between coral cover under scenario `SSP2-4.5` and the
-    mean coral cover under the other two scenarios.
-
-``` r
-mean_26_85 <- mean_26_85 |> 
-  #Calculating proportions
-  mutate(prop = ssp2_4_5/mean_cover) |> 
-  #Removing grouping by row
-  ungroup()
-
-#Checking results
-head(mean_26_85)
-```
-
-    ## # A tibble: 6 × 6
-    ##    year ssp1_2_6 ssp2_4_5 ssp5_8_5 mean_cover  prop
-    ##   <dbl>    <dbl>    <dbl>    <dbl>      <dbl> <dbl>
-    ## 1  2024     17.9     18.2     18.0       18.0  1.01
-    ## 2  2025     18.0     18.3     18.1       18.0  1.02
-    ## 3  2026     17.7     18.3     18.0       17.9  1.03
-    ## 4  2027     17.4     18.3     17.9       17.7  1.04
-    ## 5  2028     17.2     18.2     17.6       17.4  1.05
-    ## 6  2029     17.5     18.8     18.0       17.8  1.06
-
-We can now check that by multiplying the mean coral cover by our
-correction (`prop` column), we get an exact match of the coral cover
-under scenario `SSP2-4.5`.
-
-``` r
-mean_26_85 |> 
-  #Applying correction
-  mutate(corrected = mean_cover*prop) |> 
-  #Plotting year along the x axis
-  ggplot(aes(x = year))+
-  #Plotting corrected mean as a red line
-  geom_line(aes(y = corrected), color = "red")+
-  #Plotting original coral cover under scenario `SSP2-4.5` as points
-  geom_point(aes(y = ssp2_4_5))+
-  theme_bw()
-```
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
-
-We can see that our corrected mean coral cover (red line) now perfectly
-matches the coral cover under scenario `SSP2-4.5` (black points). We
-will not use this proportions as corrections to estimate biomass under
-scenario `SSP2-4.5` from FishMIP data, instead we will apply a
-generalised additive model (GAM) to get an approximate of these
-proportions.
-
-4.  Use GAM to calculate corrections per year.
-
-``` r
-#Corrections will be estimated for each year. We will apply a smoother to year 
-#to allow GAM to become a polynomial if it fits the data better
-gam_mod <- gam(prop ~ s(year, k = 6), data = mean_26_85)
-
-#Now we will apply GAM model to get the corrections
-mean_26_85 <- mean_26_85 |> 
-  mutate(correction = as.vector(predict(gam_mod, data = mean_26_85, 
-                                        type = "response")))
-
-#Plotting data
-mean_26_85 |> 
-  #Setting year as x axis
-  ggplot(aes(x = year))+
-  #Plotting original proportions as points
-  geom_point(aes(y = prop))+
-  #Plotting new corrections as a line
-  geom_line(aes(y = correction), color = "red")+
-  theme_bw()
-```
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
-
-Finally, we can calculate the coral cover under scenario `SSP2-4.5`
-using the newly calculated correction and the mean coral cover from
-scenarios `SSP1-2.6` and `SSP5-8.5`.
-
-``` r
-mean_26_85 |> 
-  mutate(corrected_mean = mean_cover*correction) |> 
-  ggplot(aes(x = year))+
-  geom_point(aes(y = ssp2_4_5))+
-  geom_line(aes(y = corrected_mean), color = "red")+
-  theme_bw()
-```
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
-
-5.  Finally, we will apply this correction to FishMIP data to calculate
-    fish biomass estimates under scenario `SSP2-4.5`.
+We will now calculate fish biomass estimates under `SSP2-4.5` for
+FishMIP models.
 
 ``` r
 biomass_ssp245 <- bio_picts |> 
   #select data for future scenarios only
   filter(scenario != "historical") |> 
+  #Reformat data before calculating mean scenario (SSP126 and SSP585)
   pivot_wider(names_from = scenario, values_from = mean_annual_bio) |> 
   rowwise() |> 
+  #Calculate mean scenario
   mutate(mean_scenarios = mean(c(ssp126, ssp585))) |> 
-  ungroup() 
+  ungroup() |> 
+  #Rename columns to match GBR data
+  rename("ssp1_2_6" = "ssp126", "ssp5_8_5" = "ssp585")
+  
 
 biomass_ssp245 <- biomass_ssp245 |> 
-  mutate(correction = as.vector(predict(gam_mod, biomass_ssp245["year"])),
-         ssp245_est = mean_scenarios*correction) |> 
-  select(!correction) |> 
   #Calculations performed by year and EEZ
   group_by(mask, year) |>
-  summarise(across(ssp126:ssp245_est, 
+  summarise(across(ssp1_2_6:mean_scenarios, 
                    #Listing statistics to be calculated
                    list(min = min, median = median, max = max), 
                    #Setting column names
@@ -695,60 +609,25 @@ biomass_ssp245 <- biomass_ssp245 |>
     ## `summarise()` has grouped output by 'mask'. You can override using the
     ## `.groups` argument.
 
+We can plot the fish biomass estimates of the first four PICTs to check
+the results.
+
 ``` r
 biomass_ssp245 |> 
   filter(mask < 8316) |> 
+  #We will only plot the median values
   select(mask, year, ends_with("median")) |> 
+  #Reformat data to make plotting easier
   pivot_longer(ends_with("median"), names_to = "scenario", values_to = "biomass") |> 
+  #Plotting
   ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
   geom_line()+
   facet_wrap(~mask)+
   theme_bw()
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
-## Two model approach
-
-``` r
-mod1 <- gam(prop ~ s(year, k = 2), data = mean_26_85 |> filter(year <= 2052))
-```
-
-    ## Warning in smooth.construct.tp.smooth.spec(object, dk$data, dk$knots): basis dimension, k, increased to minimum possible
-
-``` r
-pred1 <- as.vector(predict(mod1, mean_26_85 |> filter(year <= 2052)))
-
-mod2 <- gam(prop ~ s(year, k = 4), data = mean_26_85 |> filter(year > 2052))
-pred2 <- as.vector(predict(mod2, mean_26_85 |> filter(year > 2052)))
-
-mean_26_85 |> 
-  mutate(pred2 = c(pred1, pred2)) |> 
-  ggplot(aes(x = year))+
-  geom_line(aes(y = prop))+
-  geom_line(aes(y = pred2), color = "red")
-```
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
-
-``` r
-pred1 <- as.vector(predict(mod1, biomass_ssp245 |> distinct(year) |> filter(year <= 2052)))
-preds <- data.frame(year = biomass_ssp245 |> distinct(year), pred = c(pred1, pred2))
-
-biomass_ssp245 |> 
-  left_join(preds, by = "year") |> 
-  mutate(corr_mean = `mean_scenarios-median`*pred) |> 
-  select(mask, year, ends_with("median"), corr_mean) |> 
-  pivot_longer(cols = `ssp126-median`:corr_mean, names_to = "scenario", values_to = "biomass") |> 
-  group_by(year, mask, scenario) |> 
-  summarise(mean = mean(biomass)) |> 
-  filter(mask < 8316) |> 
-  ggplot(aes(x = year, y = mean, color = scenario))+
-  geom_line()+
-  facet_wrap(~mask)
-```
-
-    ## `summarise()` has grouped output by 'year', 'mask'. You can override using the
-    ## `.groups` argument.
-
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+It should be noted that we attempted to apply corrections to the
+projected biomass estimates. However, results appeared to be unlikely
+for the moderate emissions scenario.
