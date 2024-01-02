@@ -28,11 +28,31 @@ PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |>
 #Loading FishMIP biomass data
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")|>
   #Removing GBR data
-  filter(mask != 9999) |> 
+  filter(mask != 9999)
+
+#Calculating SSP2-4.5 biomass estimates
+bio_picts_ssp245 <- bio_picts |> 
+  #select data for future scenarios only
+  filter(scenario != "historical") |> 
+  #Reformat data before calculating mean scenario (SSP126 and SSP585)
+  pivot_wider(names_from = scenario, values_from = mean_annual_bio) |> 
+  rowwise() |> 
+  #Calculate mean scenario
+  mutate(ssp245_est = mean(c(ssp126, ssp585))) |> 
+  ungroup() |> 
+  #Removing columns not needed
+  select(!(ssp126:ssp585)) |> 
+  #Rearranging data before merging to original FishMIP scenarios
+  pivot_longer(ssp245_est, names_to = "scenario", values_to = "mean_annual_bio") |> 
+  #Ensuring column locations match
+  relocate(mask, .after = scenario) |> 
+  #Merging data frames
+  bind_rows(bio_picts) |> 
   #Rename scenarios to match coral data
   mutate(scenario = case_when(scenario == "ssp126" ~ "SSP1-2.6",
+                              scenario == "ssp245_est" ~ "SSP2-4.5",
                               scenario == "ssp585" ~ "SSP5-8.5",
-                              T ~ scenario)) 
+                              T ~ scenario))
 ```
   
 ## Calculating mean for reference period
@@ -42,12 +62,12 @@ Plots created here will show percentage change in biomass over time under two em
 #Calculating mean for reference decade (2010-2020)
 ref_decade <- bio_picts |>
   filter(year >= 2010 & year <= 2020) |> 
-  filter(str_detect(scenario, "8.5", negate = T)) |> 
+  filter(str_detect(scenario, "585", negate = T)) |> 
   group_by(mem, esm, mask) |> 
   summarise(ref = mean(mean_annual_bio))
 
 #Calculating proportion of biomass in relation to reference decade
-bio_plots <- bio_picts |> 
+bio_plots <- bio_picts_ssp245 |> 
   left_join(ref_decade, by = c("mem", "esm", "mask")) |> 
   mutate(rel_change = ((mean_annual_bio-ref)/ref)*100) |> 
   #Calculations performed by year and EEZ
@@ -79,9 +99,9 @@ bio_plots |>
                      breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
   facet_wrap(~name, scales = "free_y")+
   scale_color_manual(values = c("historical" = "black", "SSP1-2.6" = "#7570b3",
-                                "SSP5-8.5" = "#1b9e77"))+
+                                "SSP2-4.5" = "#fc8d62", "SSP5-8.5" = "#1b9e77"))+
   scale_fill_manual(values = c("historical" = "black", "SSP1-2.6" = "#7570b3",
-                                "SSP5-8.5" = "#1b9e77"))+
+                                "SSP2-4.5" = "#fc8d62", "SSP5-8.5" = "#1b9e77"))+
   theme_bw()+
   theme(legend.position = "bottom", legend.justification = "right",
         legend.box.spacing = unit(-2, "cm"), panel.grid.minor.y = element_blank(),
