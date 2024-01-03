@@ -82,14 +82,21 @@ bio_plots <- bio_picts_ssp245 |>
   ungroup() |> 
   left_join(PICTS_keys, by = c("mask"="ID"))
 
+#Saving results
+bio_plots |> 
+  write_csv("../Outputs/yearly_relative_biomass_change_1985-2100.csv")
+
 #Checking results
 head(bio_plots)
 ```
   
 ## Plotting data 
+We will remove the lowest emission scenario (`SSP1-2.6`) before plotting relative change in biomass.  
   
 ```{r}
 bio_plots |> 
+  #Removing lowest emission scenario
+  filter(str_detect(scenario, "2.6", negate = T)) |> 
   ggplot(aes(x = year, y = rel_change_median, color = scenario))+
   geom_line(linewidth = 0.5)+
   geom_hline(yintercept = 1, color = "#709fcc", linewidth = 0.65, linetype = 2)+
@@ -99,10 +106,10 @@ bio_plots |>
   scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
                      breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
   facet_wrap(~name, scales = "free_y")+
-  scale_color_manual(values = c("historical" = "black", "SSP1-2.6" = "#7570b3",
-                                "SSP2-4.5" = "#fc8d62", "SSP5-8.5" = "#1b9e77"))+
-  scale_fill_manual(values = c("historical" = "black", "SSP1-2.6" = "#7570b3",
-                                "SSP2-4.5" = "#fc8d62", "SSP5-8.5" = "#1b9e77"))+
+  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
+                                "SSP5-8.5" = "#1b9e77"))+
+  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
+                               "SSP5-8.5" = "#1b9e77"))+
   theme_bw()+
   theme(legend.position = "bottom", legend.justification = "right",
         legend.box.spacing = unit(-2, "cm"), panel.grid.minor.y = element_blank(),
