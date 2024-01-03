@@ -268,6 +268,7 @@ all_plots <- plot_grid(title, plot_grid(p50_245, p50_585, ncol = 2, nrow = 1),
 #Check final map
 all_plots
 ```
+  
 ## Saving final plot
   
 ```{r, eval = F}

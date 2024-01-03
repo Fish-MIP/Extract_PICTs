@@ -24,6 +24,8 @@ Denisse Fierro Arcos
     id="toc-creating-colour-palette">Creating colour palette</a>
   - <a href="#creating-individual-maps"
     id="toc-creating-individual-maps">Creating individual maps</a>
+  - <a href="#saving-final-plot" id="toc-saving-final-plot">Saving final
+    plot</a>
 
 # Loading libraries
 
@@ -388,7 +390,8 @@ all_plots
 ```
 
 ![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
-\## Saving final plot
+
+## Saving final plot
 
 ``` r
 ggsave("../Outputs/sample_maps_perc_change.pdf", device = "pdf", width = 14, height = 9)
