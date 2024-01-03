@@ -68,7 +68,7 @@ library(openxlsx)
 library(janitor)
 ```
 
-## models used to generate biomass projections for PICTs
+## Models used to generate biomass projections for PICTs
 
 To generate biomass projections for PICTs, we used biomass estimates
 produced by six different fisheries models:  

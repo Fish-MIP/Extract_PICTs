@@ -22,7 +22,7 @@ library(openxlsx)
 library(janitor)
 ```
     
-##  models used to generate biomass projections for PICTs
+##  Models used to generate biomass projections for PICTs
 To generate biomass projections for PICTs, we used biomass estimates produced by six different fisheries models:  
 1. [APECOSM](https://apecosm.org/): Apex Predators ECOSystem Model, which represents the spatialized dynamics of open ocean pelagic ecosystems in the global ocean.  
 2. [BOATS](https://earthsystemdynamics.org/models/boats/): BiOeconomic mArine Trophic Size-spectrum model simulates the global fishery as a coupled ecological-economic system.  
