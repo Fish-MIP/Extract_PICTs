@@ -9,7 +9,7 @@ checking_libraries <- function(){
   #List of packages needed to run all notebooks in repository
   packages_required <- c("tidyverse", "sf", "rnaturalearth", "janitor",
                          "reticulate", "terra", "openxlsx", "data.table",
-                         "tidyterra", "patchwork")
+                         "tidyterra", "cowplot", "cmocean")
   
   #Checking packages installed in local machine
   packages_local <- installed.packages()
