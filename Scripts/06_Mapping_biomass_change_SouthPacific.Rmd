@@ -1,0 +1,158 @@
+---
+title: "Mapping biomass change under two emissions scenarios for PICTs"
+author: "Denisse Fierro Arcos"
+date: "2024-01-03"
+output:
+  github_document:
+    toc: true
+    html_preview: false
+---
+
+# Loading libraries
+  
+```{r, message = F, warning = F}
+library(data.table)
+library(terra)
+library(purrr)
+library(tidyterra)
+library(rnaturalearth)
+library(patchwork)
+library(sf)
+```
+
+# Loading information about PICTs
+This dataset will allow us to identify the country associated to each unique ID in the fish biomass estimates from FishMIP models. We will exclude the Great Barrier Reef (GBR) because it is not relevant here.  
+  
+```{r}
+PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |> 
+  #Removing GBR data
+  filter(name != "GBR")
+```
+  
+# Loading fish biomass estimates from FishMIP models
+We will create maps that show the percentage change in fish biomass under two scenarios: `SSP2-4.5` and `SSP5-8.5` for the decades between 2045 and 2055, and between 2085 and 2095. First, we will identify all files containing relevant information and then we will extract the data we need to create our maps.    
+  
+```{r}
+#Folder containing outputs from FishMIP models
+base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
+#Listing all relevant files to calculate biomass projections
+global_files <- list.files(base_folder, full.names = T)
+#Models
+members <- str_extract(global_files, "outputs//(.*)_(h|s)", group = 1) |> 
+  unique()
+```
+  
+We will go through each file, extract biomass estimates for `SSP1-2.6` and `SSP5-8.5` to estimate biomass under a moderate emissions scenario (`SSP2-4.5`) because FishMIP models do not include this scenario. As explained in the [04_Biomass_projection_SouthPacific](https://github.com/Fish-MIP/Extract_PICTs/blob/main/Scripts/04_Biomass_projections_SouthPacific.md) notebook, `SSP2-4.5` biomass estimates are calculated by taking the mean of the lowest and highest emissions scenarios (`SSP1-2.6` and `SSP5-8.5`).  
+  
+We should note that this approach provides a rough estimate of fish biomass under `SSP2-4.5`, which may result in an under estimate prior to 2060, and an overestimate after 2080.  
+  
+```{r, evaluate = F}
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    #Ignore columns SOVEREIGN1-3 - not needed here
+    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m"))) |> 
+    #Extract data only for years to be used in maps
+    filter(year >= 2010 & year <= 2020 | year >= 2045 & year <= 2055 | year >= 2085 & year <= 2095) |> 
+    #Do not keep data before 2021 for scenario ssp585
+    filter(!((year >= 2015 & year <= 2020) & scenario == "ssp585")) |> 
+    #If EEZ is not a PICT mark as NA
+    mutate(eez = case_when(!eez %in% PICTS_keys$MRGID ~ NA,
+                           T ~ eez)) |> 
+    #Remove EEZs classified as NA (no PICTs)
+    drop_na(eez) 
+  
+  #Calculating biomass for SSP2-4.5 scenario
+  ssp245 <- df_model |> 
+    #Keeping data from 2045 and beyond for two scenarios
+    filter(year >= 2045) |> 
+    #Calculating mean at a pixel level
+    group_by(x, y, year, mem, esm) |>
+    summarise(biomass = mean(biomass, na.rm = F)) |> 
+    #Reformatting data so it matches original file
+    relocate(biomass, .after = "year") |> 
+    #Adding scenario name
+    mutate(scenario = "ssp245") |> 
+    #Adding missing EEZ and name information
+    left_join(df_model |> 
+                distinct(x, y, eez, GEONAME), by = c("x", "y"))
+  
+  #We will now remove the SSP1-2.6 data from 2045 and beyond 
+  df_model <- df_model |> 
+    filter(!(scenario == "ssp126" & year >= 2045)) |> 
+    #This will be replaced with SSP2-4.5
+    bind_rows(ssp245) |> 
+    #Create new group column to calculate means
+    mutate(group = case_when(year <= 2020 ~ "reference",
+                             year >= 2045 & year <= 2055 ~ "mean50",
+                             year >= 2085 & year <= 2095 ~ "mean80"),
+           #The mean50 and mean80 groups also need to have the scenario as part of the label
+           group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
+                             T ~ group)) |> 
+    #Calculate mean per ensemble member
+    group_by(x, y, mem, esm, eez, GEONAME, group) |> 
+    summarise(mean_bio = mean(biomass, na.rm = T)) |> 
+    #Reorganise table to facilitate calculations
+    pivot_wider(names_from = group, values_from = mean_bio) |> 
+    ungroup() |> 
+    #Calculate % change in fish biomass for two scenarios: SSP2-4.5 and SSP5-8.5
+    mutate(rel_change_mean50_ssp245 = ((mean50_ssp245-reference)/reference)*100,
+           rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
+           rel_change_mean80_ssp245 = ((mean80_ssp245-reference)/reference)*100,
+           rel_change_mean80_ssp585 = ((mean80_ssp585-reference)/reference)*100)
+    
+  #Create name to save file  
+  f_out <- file.path("../Outputs", str_c(m, "_map_data.csv"))
+
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+```
+    
+## Creating rasters from data frames
+
+
+
+```{r}
+#Load grid sample
+mask_base <- read_csv("Outputs/mask_1deg.csv") |> 
+  select(!mask) |> 
+  rename(x = Lon, y = Lat)
+
+#Listing all relevant files to calculate biomass projections
+maps_data <- list.files("Outputs/", pattern = "_map_data.csv", full.names = T) |> 
+  map_df(~fread(.)) |> 
+  #Calculations performed by year and EEZ
+  group_by(x, y, eez, GEONAME) |> 
+  #Apply calculations to biases only
+  summarise(across(reference:rel_change_mean80_ssp585, 
+                   #Listing statistics to be calculated
+                   list(median = median), 
+                   #Setting column names
+                   .names = "{.col}_{.fn}")) |> 
+  right_join(mask_base, by = c("x", "y")) |> 
+  ungroup()
+```
+
+
+
+# Loading PICT boundaries
+```{r}
+picts <- read_sf("../Outputs/SouthPacific_EEZ-GBR.shp") |> 
+  #Exclude Great Barrier Reef
+  filter(name != "GBR") |> 
+  #Fix any invalid geometry
+  st_make_valid() |> 
+  #Dissolve boundaries within PICTs
+  group_by(ID_1, name) |> 
+  summarise(across(geometry, ~ st_combine(.))) |> 
+  #Ensure ID and name are factors
+  mutate(ID_1 = as.factor(ID_1)) |> 
+  #Ensuring shapefile crosses the international dateline
+  st_wrap_dateline(options = c("WRAPDATELINE=YES", "DATELINEOFFSET=180"))
+
+
+
+```
+
