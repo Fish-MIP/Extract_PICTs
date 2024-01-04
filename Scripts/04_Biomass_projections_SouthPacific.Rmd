@@ -111,17 +111,11 @@ base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumS
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
-#Loading PICTs EEZ mask and GBR boundaries (two different grids)
-mask_base <- read_csv("../Outputs/mask_1deg.csv")
-mask_DBPM <- read_csv("../Outputs/mask_1deg_DBPM.csv")
+#Loading PICTs EEZ mask and GBR boundaries 
+mask <- read_csv("../Outputs/mask_1deg.csv")
 
 #Defining function to extract biomass data for all PICTs from FishMIP outputs
 mean_yr_bio <- function(file_name){
-  if(str_detect(file_name, "dbpm|zoomss_ipsl")){
-    mask <- mask_DBPM
-  }else{
-    mask <- mask_base
-  }
   da <- read_csv(file_name, col_select = x:GEONAME) |> 
     #Select data from 1985
     filter(year >= 1985) |> 

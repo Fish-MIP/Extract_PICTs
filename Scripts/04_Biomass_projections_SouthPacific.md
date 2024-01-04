@@ -238,17 +238,11 @@ base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumS
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
-#Loading PICTs EEZ mask and GBR boundaries (two different grids)
-mask_base <- read_csv("../Outputs/mask_1deg.csv")
-mask_DBPM <- read_csv("../Outputs/mask_1deg_DBPM.csv")
+#Loading PICTs EEZ mask and GBR boundaries 
+mask <- read_csv("../Outputs/mask_1deg.csv")
 
 #Defining function to extract biomass data for all PICTs from FishMIP outputs
 mean_yr_bio <- function(file_name){
-  if(str_detect(file_name, "dbpm|zoomss_ipsl")){
-    mask <- mask_DBPM
-  }else{
-    mask <- mask_base
-  }
   da <- read_csv(file_name, col_select = x:GEONAME) |> 
     #Select data from 1985
     filter(year >= 1985) |> 
@@ -285,7 +279,7 @@ above and continue to run all other code chunks in this notebook.
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
 ```
 
-    ## Rows: 40550 Columns: 6
+    ## Rows: 50500 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (3): mem, esm, scenario
@@ -323,14 +317,6 @@ gbr_bio <- bio_picts |>
             fishmip_upper_bio = max(mean_annual_bio, na.rm = T))
 ```
 
-    ## Warning: There were 2 warnings in `summarise()`.
-    ## The first warning was:
-    ## ℹ In argument: `fishmip_lower_bio = min(mean_annual_bio, na.rm = T)`.
-    ## ℹ In group 203: `scenario = NA`, `year = NA`.
-    ## Caused by warning in `min()`:
-    ## ! no non-missing arguments to min; returning Inf
-    ## ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
-
     ## `summarise()` has grouped output by 'scenario'. You can override using the
     ## `.groups` argument.
 
@@ -343,12 +329,12 @@ head(gbr_bio)
     ## # Groups:   scenario [1]
     ##   scenario  year fishmip_lower_bio fishmip_mean_bio fishmip_upper_bio
     ##   <chr>    <dbl>             <dbl>            <dbl>             <dbl>
-    ## 1 SSP1-2.6  2015             0.643             4.62              15.7
-    ## 2 SSP1-2.6  2016             0.556             4.86              16.5
-    ## 3 SSP1-2.6  2017             0.560             4.49              13.5
-    ## 4 SSP1-2.6  2018             0.560             4.44              13.1
-    ## 5 SSP1-2.6  2019             0.630             4.43              13.8
-    ## 6 SSP1-2.6  2020             0.637             4.69              14.6
+    ## 1 SSP1-2.6  2015             0.643             5.01              15.7
+    ## 2 SSP1-2.6  2016             0.556             5.31              16.5
+    ## 3 SSP1-2.6  2017             0.560             5.18              13.8
+    ## 4 SSP1-2.6  2018             0.560             5.57              18.1
+    ## 5 SSP1-2.6  2019             0.630             5.10              13.8
+    ## 6 SSP1-2.6  2020             0.637             5.37              14.6
 
 ### Comparing ensemble means to REEFMOD biomass estimates
 
@@ -374,12 +360,12 @@ head(fishmip_biases)
     ## # Groups:   scenario [1]
     ##   scenario  year fishmip_lower_bio fishmip_mean_bio fishmip_upper_bio
     ##   <chr>    <dbl>             <dbl>            <dbl>             <dbl>
-    ## 1 SSP1-2.6  2024             0.593             4.73              16.2
-    ## 2 SSP1-2.6  2025             0.565             4.98              16.1
-    ## 3 SSP1-2.6  2026             0.699             4.30              13.3
-    ## 4 SSP1-2.6  2027             0.648             4.64              15.1
-    ## 5 SSP1-2.6  2028             0.648             4.59              13.2
-    ## 6 SSP1-2.6  2029             0.678             4.83              15.0
+    ## 1 SSP1-2.6  2024             0.593             5.14              16.2
+    ## 2 SSP1-2.6  2025             0.565             5.78              16.1
+    ## 3 SSP1-2.6  2026             0.699             5.03              13.7
+    ## 4 SSP1-2.6  2027             0.648             5.37              15.1
+    ## 5 SSP1-2.6  2028             0.648             5.64              17.5
+    ## 6 SSP1-2.6  2029             0.678             5.79              17.1
     ## # ℹ 8 more variables: fish_biomass <dbl>, reefmod_lower_biomass <dbl>,
     ## #   reefmod_median_biomass <dbl>, reefmod_upper_biomass <dbl>,
     ## #   mean_bias_fish_bio_fishmip <dbl>, lower_bias_reefmod_fishmip <dbl>,
@@ -398,12 +384,12 @@ minimum, mean, median, and maximum.
     ## # A tibble: 6 × 6
     ##   scenario stat   mean_bias_fish_bio_fishmip lower_bias_reefmod_fishmip
     ##   <chr>    <chr>                       <dbl>                      <dbl>
-    ## 1 SSP1-2.6 min                          29.4                       26.6
-    ## 2 SSP1-2.6 mean                         37.8                       43.6
-    ## 3 SSP1-2.6 median                       37.7                       41.7
-    ## 4 SSP1-2.6 max                          48.0                       67.3
-    ## 5 SSP5-8.5 min                          29.5                       18.0
-    ## 6 SSP5-8.5 mean                         35.9                       30.7
+    ## 1 SSP1-2.6 min                          25.0                       26.6
+    ## 2 SSP1-2.6 mean                         32.0                       43.6
+    ## 3 SSP1-2.6 median                       32.4                       41.7
+    ## 4 SSP1-2.6 max                          41.3                       67.3
+    ## 5 SSP5-8.5 min                          23.3                       18.0
+    ## 6 SSP5-8.5 mean                         29.4                       30.7
     ## # ℹ 2 more variables: mean_bias_reefmod_fishmip <dbl>,
     ## #   upper_bias_reefmod_fishmip <dbl>
 
@@ -449,10 +435,10 @@ head(ensemble_bio)
     ##    mask scenario  year stat  mean_annual_bio
     ##   <dbl> <chr>    <dbl> <chr>           <dbl>
     ## 1  8312 SSP1-2.6  2015 lower           0.872
-    ## 2  8312 SSP1-2.6  2015 mean            4.36 
+    ## 2  8312 SSP1-2.6  2015 mean            4.26 
     ## 3  8312 SSP1-2.6  2015 max             8.05 
     ## 4  8312 SSP1-2.6  2016 lower           0.804
-    ## 5  8312 SSP1-2.6  2016 mean            4.78 
+    ## 5  8312 SSP1-2.6  2016 mean            4.70 
     ## 6  8312 SSP1-2.6  2016 max             8.27
 
 Note that the mean bias values for scenario `SSP1-2.6` calculated in
@@ -496,12 +482,12 @@ head(bias_corr_biomass)
     ## # Groups:   mask, scenario [1]
     ##    mask scenario  year stat  bio_corr_nash bio_corr_reefmod_low
     ##   <dbl> <chr>    <dbl> <chr>         <dbl>                <dbl>
-    ## 1  8312 SSP1-2.6  2015 lower          33.0                 38.0
-    ## 2  8312 SSP1-2.6  2015 mean          165.                 190. 
-    ## 3  8312 SSP1-2.6  2015 max           304.                 351. 
-    ## 4  8312 SSP1-2.6  2016 lower          30.4                 35.1
-    ## 5  8312 SSP1-2.6  2016 mean          181.                 209. 
-    ## 6  8312 SSP1-2.6  2016 max           313.                 361. 
+    ## 1  8312 SSP1-2.6  2015 lower          27.9                 38.0
+    ## 2  8312 SSP1-2.6  2015 mean          136.                 186. 
+    ## 3  8312 SSP1-2.6  2015 max           258.                 351. 
+    ## 4  8312 SSP1-2.6  2016 lower          25.7                 35.1
+    ## 5  8312 SSP1-2.6  2016 mean          151.                 205. 
+    ## 6  8312 SSP1-2.6  2016 max           265.                 361. 
     ## # ℹ 2 more variables: bio_corr_reefmod_mean <dbl>, bio_corr_reefmod_upper <dbl>
 
 ### Plotting corrected biomass for a single PICTs
