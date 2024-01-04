@@ -12,7 +12,7 @@ Beth Fulton and Denisse Fierro Arcos
   - <a href="#loading-relevant-libraries"
     id="toc-loading-relevant-libraries">Loading relevant libraries</a>
   - <a href="#models-used-to-generate-biomass-projections-for-picts"
-    id="toc-models-used-to-generate-biomass-projections-for-picts">models
+    id="toc-models-used-to-generate-biomass-projections-for-picts">Models
     used to generate biomass projections for PICTs</a>
   - <a href="#1-biomass-projections-from-reefmod-data"
     id="toc-1-biomass-projections-from-reefmod-data">1. Biomass projections
@@ -285,7 +285,7 @@ above and continue to run all other code chunks in this notebook.
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
 ```
 
-    ## Rows: 46460 Columns: 6
+    ## Rows: 40550 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (3): mem, esm, scenario
@@ -323,6 +323,14 @@ gbr_bio <- bio_picts |>
             fishmip_upper_bio = max(mean_annual_bio, na.rm = T))
 ```
 
+    ## Warning: There were 2 warnings in `summarise()`.
+    ## The first warning was:
+    ## ℹ In argument: `fishmip_lower_bio = min(mean_annual_bio, na.rm = T)`.
+    ## ℹ In group 203: `scenario = NA`, `year = NA`.
+    ## Caused by warning in `min()`:
+    ## ! no non-missing arguments to min; returning Inf
+    ## ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
+
     ## `summarise()` has grouped output by 'scenario'. You can override using the
     ## `.groups` argument.
 
@@ -335,12 +343,12 @@ head(gbr_bio)
     ## # Groups:   scenario [1]
     ##   scenario  year fishmip_lower_bio fishmip_mean_bio fishmip_upper_bio
     ##   <chr>    <dbl>             <dbl>            <dbl>             <dbl>
-    ## 1 SSP1-2.6  2015             0.688             4.57              13.9
-    ## 2 SSP1-2.6  2016             0.583             4.81              13.7
-    ## 3 SSP1-2.6  2017             0.559             4.67              14.9
-    ## 4 SSP1-2.6  2018             0.600             5.06              19.9
-    ## 5 SSP1-2.6  2019             0.668             4.47              14.2
-    ## 6 SSP1-2.6  2020             0.667             4.78              14.9
+    ## 1 SSP1-2.6  2015             0.643             4.62              15.7
+    ## 2 SSP1-2.6  2016             0.556             4.86              16.5
+    ## 3 SSP1-2.6  2017             0.560             4.49              13.5
+    ## 4 SSP1-2.6  2018             0.560             4.44              13.1
+    ## 5 SSP1-2.6  2019             0.630             4.43              13.8
+    ## 6 SSP1-2.6  2020             0.637             4.69              14.6
 
 ### Comparing ensemble means to REEFMOD biomass estimates
 
@@ -366,12 +374,12 @@ head(fishmip_biases)
     ## # Groups:   scenario [1]
     ##   scenario  year fishmip_lower_bio fishmip_mean_bio fishmip_upper_bio
     ##   <chr>    <dbl>             <dbl>            <dbl>             <dbl>
-    ## 1 SSP1-2.6  2024             0.614             4.60              13.8
-    ## 2 SSP1-2.6  2025             0.596             5.25              17.2
-    ## 3 SSP1-2.6  2026             0.762             4.55              15.3
-    ## 4 SSP1-2.6  2027             0.687             5.00              17.0
-    ## 5 SSP1-2.6  2028             0.706             5.03              18.4
-    ## 6 SSP1-2.6  2029             0.723             5.26              18.7
+    ## 1 SSP1-2.6  2024             0.593             4.73              16.2
+    ## 2 SSP1-2.6  2025             0.565             4.98              16.1
+    ## 3 SSP1-2.6  2026             0.699             4.30              13.3
+    ## 4 SSP1-2.6  2027             0.648             4.64              15.1
+    ## 5 SSP1-2.6  2028             0.648             4.59              13.2
+    ## 6 SSP1-2.6  2029             0.678             4.83              15.0
     ## # ℹ 8 more variables: fish_biomass <dbl>, reefmod_lower_biomass <dbl>,
     ## #   reefmod_median_biomass <dbl>, reefmod_upper_biomass <dbl>,
     ## #   mean_bias_fish_bio_fishmip <dbl>, lower_bias_reefmod_fishmip <dbl>,
@@ -390,12 +398,12 @@ minimum, mean, median, and maximum.
     ## # A tibble: 6 × 6
     ##   scenario stat   mean_bias_fish_bio_fishmip lower_bias_reefmod_fishmip
     ##   <chr>    <chr>                       <dbl>                      <dbl>
-    ## 1 SSP1-2.6 min                          27.9                       25.1
-    ## 2 SSP1-2.6 mean                         35.9                       40.9
-    ## 3 SSP1-2.6 median                       36.0                       38.7
-    ## 4 SSP1-2.6 max                          46.0                       63.0
-    ## 5 SSP5-8.5 min                          23.8                       16.7
-    ## 6 SSP5-8.5 mean                         32.2                       28.0
+    ## 1 SSP1-2.6 min                          29.4                       26.6
+    ## 2 SSP1-2.6 mean                         37.8                       43.6
+    ## 3 SSP1-2.6 median                       37.7                       41.7
+    ## 4 SSP1-2.6 max                          48.0                       67.3
+    ## 5 SSP5-8.5 min                          29.5                       18.0
+    ## 6 SSP5-8.5 mean                         35.9                       30.7
     ## # ℹ 2 more variables: mean_bias_reefmod_fishmip <dbl>,
     ## #   upper_bias_reefmod_fishmip <dbl>
 
@@ -440,12 +448,12 @@ head(ensemble_bio)
     ## # Groups:   mask, scenario [1]
     ##    mask scenario  year stat  mean_annual_bio
     ##   <dbl> <chr>    <dbl> <chr>           <dbl>
-    ## 1  8312 SSP1-2.6  2015 lower           0.850
-    ## 2  8312 SSP1-2.6  2015 mean            4.10 
-    ## 3  8312 SSP1-2.6  2015 max             7.80 
-    ## 4  8312 SSP1-2.6  2016 lower           0.780
-    ## 5  8312 SSP1-2.6  2016 mean            4.55 
-    ## 6  8312 SSP1-2.6  2016 max             7.96
+    ## 1  8312 SSP1-2.6  2015 lower           0.872
+    ## 2  8312 SSP1-2.6  2015 mean            4.36 
+    ## 3  8312 SSP1-2.6  2015 max             8.05 
+    ## 4  8312 SSP1-2.6  2016 lower           0.804
+    ## 5  8312 SSP1-2.6  2016 mean            4.78 
+    ## 6  8312 SSP1-2.6  2016 max             8.27
 
 Note that the mean bias values for scenario `SSP1-2.6` calculated in
 step 3 will be used to calculated the corrected biomass for the
@@ -488,12 +496,12 @@ head(bias_corr_biomass)
     ## # Groups:   mask, scenario [1]
     ##    mask scenario  year stat  bio_corr_nash bio_corr_reefmod_low
     ##   <dbl> <chr>    <dbl> <chr>         <dbl>                <dbl>
-    ## 1  8312 SSP1-2.6  2015 lower          30.5                 34.8
-    ## 2  8312 SSP1-2.6  2015 mean          147.                 168. 
-    ## 3  8312 SSP1-2.6  2015 max           280.                 319. 
-    ## 4  8312 SSP1-2.6  2016 lower          28.0                 31.9
-    ## 5  8312 SSP1-2.6  2016 mean          163.                 186. 
-    ## 6  8312 SSP1-2.6  2016 max           286.                 326. 
+    ## 1  8312 SSP1-2.6  2015 lower          33.0                 38.0
+    ## 2  8312 SSP1-2.6  2015 mean          165.                 190. 
+    ## 3  8312 SSP1-2.6  2015 max           304.                 351. 
+    ## 4  8312 SSP1-2.6  2016 lower          30.4                 35.1
+    ## 5  8312 SSP1-2.6  2016 mean          181.                 209. 
+    ## 6  8312 SSP1-2.6  2016 max           313.                 361. 
     ## # ℹ 2 more variables: bio_corr_reefmod_mean <dbl>, bio_corr_reefmod_upper <dbl>
 
 ### Plotting corrected biomass for a single PICTs
@@ -614,7 +622,7 @@ the results.
 
 ``` r
 biomass_ssp245 |> 
-  filter(mask < 8316) |> 
+  filter(mask %in% c(8318, 8316, 8317, 8315, 8324, 8314)) |> 
   #We will only plot the median values
   select(mask, year, ends_with("median")) |> 
   #Reformat data to make plotting easier
@@ -622,7 +630,7 @@ biomass_ssp245 |>
   #Plotting
   ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
   geom_line()+
-  facet_wrap(~mask)+
+  facet_wrap(~mask, scales = "free_y")+
   theme_bw()
 ```
 

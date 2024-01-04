@@ -373,7 +373,7 @@ We can plot the fish biomass estimates of the first four PICTs to check the resu
   
 ```{r}
 biomass_ssp245 |> 
-  filter(mask < 8316) |> 
+  filter(mask %in% c(8318, 8316, 8317, 8315, 8324, 8314)) |> 
   #We will only plot the median values
   select(mask, year, ends_with("median")) |> 
   #Reformat data to make plotting easier
@@ -381,7 +381,7 @@ biomass_ssp245 |>
   #Plotting
   ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
   geom_line()+
-  facet_wrap(~mask)+
+  facet_wrap(~mask, scales = "free_y")+
   theme_bw()
 ```
   
