@@ -222,9 +222,6 @@ gbr
 ### Merging shapefiles
 
 ``` r
-#Turning off spherical geometry
-# sf_use_s2(F)
-
 #Merging shapefiles
 gbr_eez_SP <- bind_rows(gbr, eez_SP)
 
