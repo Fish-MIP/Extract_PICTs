@@ -4,6 +4,8 @@ authors:
 - family-names: "Fierro-Arcos"
   given-names: "Denisse"
   orcid: "https://orcid.org/0000-0002-5039-6272"
+- family-names: "Fulton"
+  given-names: "Beth"
 - name: "Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP)"
 
 title: "Extract PICTs"
