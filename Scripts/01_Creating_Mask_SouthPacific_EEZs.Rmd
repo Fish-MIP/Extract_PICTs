@@ -18,7 +18,6 @@ The resulting raster mask for the South Pacific EEZs will be used to extract ISI
 ```{r libraries, results = "hide", warnings = F, message = F}
 library(sf)
 library(terra)
-library(nngeo)
 library(tidyverse)
 library(reticulate)
 library(jsonlite)

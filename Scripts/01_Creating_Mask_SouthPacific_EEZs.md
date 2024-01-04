@@ -60,7 +60,6 @@ combination of `R` and `Python` with the `reticulate` library.
 ``` r
 library(sf)
 library(terra)
-library(nngeo)
 library(tidyverse)
 library(reticulate)
 library(jsonlite)
