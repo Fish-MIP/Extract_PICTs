@@ -11,33 +11,35 @@ output:
 ## Introduction
 In this notebook, we will a shapefile from [VLIZ](https://doi.org/10.14284/386) which contains the boundaries of all the Exclusive Economic Zones (EEZs) around the world to create a raster mask for 22 EEZs of our interest. All these EEZ are located within the South Pacific region and are listed in this [website](https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_KEYFACTS&df[ag]=SPC&df[vs]=1.0&dq=..EEZ.&pd=2020%2C2021&ly[rw]=GEO_PICT). We will access the South Pacific EEZ list remotely.  
   
-The resulting raster mask for the South Pacific EEZs will be used to extract ISIMIP3B input and output data that will be used to perform vulnerability assessments of this region. This notebook will use a combination of `R` and `Python` with the `reticulate` library.
-
+The resulting raster mask for the South Pacific EEZs will be used to extract ISIMIP3B input and output data that will be used to perform vulnerability assessments of this region. This notebook will use a combination of `R` and `Python` with the `reticulate` library.  
+  
 ## Loading R libraries
-
+  
 ```{r libraries, results = "hide", warnings = F, message = F}
 library(sf)
 library(terra)
+library(nngeo)
 library(tidyverse)
 library(reticulate)
 library(jsonlite)
 library(rnaturalearth)
 library(janitor)
 ```
-
+  
 ## Loading EEZs of the world shapefile
 This shapefile was downloaded from [VLIZ](https://doi.org/10.14284/386) and it is not included in this repository due to its size. Ensure you have downloaded this file and saved it inside the `Data` folder.  
   
-**Note:** The shapefile version 11 downloaded on November 9, 2022 is used in this notebook. If a later version is available, ensure the file paths to the shapefile is updated in the code chunk below.
-
+**Note:** The shapefile version 11 downloaded on November 9, 2022 is used in this notebook. If a later version is available, ensure the file paths to the shapefile is updated in the code chunk below.  
+  
 ```{r}
 eez_world <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_v11.shp") %>% 
   #We only need a subset of all columns available in the original dataset
   select(MRGID, GEONAME, SOVEREIGN1, SOVEREIGN2, SOVEREIGN3, TERRITORY1, TERRITORY2, TERRITORY3, AREA_KM2)
 ```
-
+  
 ## Loading list of EEZs within the South Pacific region
-As mentioned in the introduction, we will only extract data for 22 EEZs located within the South Pacific region. A list of all relevant EEZs in this region can be found in the [Pacific Data Hub](https://pacificdata.org/). We will access this list through an API.
+As mentioned in the introduction, we will only extract data for 22 EEZs located within the South Pacific region. A list of all relevant EEZs in this region can be found in the [Pacific Data Hub](https://pacificdata.org/). We will access this list through an API.  
+  
 ```{r}
 #Accessing data
 SP_EEZ <- fromJSON("https://stats-sdmx-disseminate.pacificdata.org/rest/data/SPC,DF_KEYFACTS,1.0/..EEZ.?startPeriod=2020&endPeriod=2021&dimensionAtObservation=AllDimensions", simplifyDataFrame = T)
@@ -54,10 +56,10 @@ SP_EEZ <- SP_EEZ$structure$dimensions$observation %>%
 
 head(SP_EEZ)
 ```
-
+  
 ## Filtering South Pacific EEZs
-We will do a `left_join` of the EEZ list above to the `TERRITORY1` column in our EEZ shapefile. This will extract most of the EEZs of our interest. This will be followed by a partial match using the `GEONAME` column for any EEZs missing. We will merge these results into a single variable.
-
+We will do a `left_join` of the EEZ list above to the `TERRITORY1` column in our EEZ shapefile. This will extract most of the EEZs of our interest. This will be followed by a partial match using the `GEONAME` column for any EEZs missing. We will merge these results into a single variable.  
+  
 ```{r}
 #Initial partial match
 eez_SP <- SP_EEZ %>% 
@@ -70,8 +72,9 @@ missing_EEZ <- eez_SP %>%
 
 missing_EEZ
 ```
-We will now perform a second partial search using the `GEONAME` column of the EEZ shapefile, and merge it to our first match results.
-
+  
+We will now perform a second partial search using the `GEONAME` column of the EEZ shapefile, and merge it to our first match results.  
+  
 ```{r}
 #Performing a partial search and binding results together
 eez_SP <-  eez_world %>% 
@@ -93,7 +96,7 @@ eez_SP$name %in% SP_EEZ$name
 #Deleting unused variable
 rm(missing_EEZ, eez_world)
 ```
-
+  
 We will plot the shapefile to inspect the results.
 ```{r}
 #Loading land shapefile to include in plot
@@ -108,13 +111,14 @@ eez_SP %>%
   theme(legend.position = "none")+
   lims(y = c(-40, 30))
 ```
-All the EEZs are located within our area of interest, the South Pacific, we can now save the results.
-
+  
+All the EEZs are located within our area of interest, the South Pacific, we can now save the results.  
+  
 ## Adding Great Barrier Reef Boundaries
 Before saving the shapefile, we will add one polygon defining the boundaries of the Great Barrier Reef (GBR) to our South Pacific EEZs. This shapefile is included in the `Data` folder.  
   
-First, we need to load this shapefile to our environment.
-
+First, we need to load this shapefile to our environment.  
+  
 ```{r}
 #Loading shapefile
 gbr <- read_sf("../Data/GBR_Outer_Boundary/GBR_outer_boundary.shp") %>% 
@@ -127,11 +131,11 @@ gbr <- read_sf("../Data/GBR_Outer_Boundary/GBR_outer_boundary.shp") %>%
 #Checking contents - It has a single polygon
 gbr
 ```
-
+  
 ### Merging shapefiles
 ```{r}
 #Turning off spherical geometry
-sf_use_s2(F)
+# sf_use_s2(F)
 
 #Merging shapefiles
 gbr_eez_SP <- bind_rows(gbr, eez_SP)
@@ -139,10 +143,9 @@ gbr_eez_SP <- bind_rows(gbr, eez_SP)
 #Checking results
 gbr_eez_SP
 ```
-
-
-We will edit the GBR entry, so the name will be more informative. We will also provide a unique ID and remove any columns that are empty.
-
+  
+We will edit the GBR entry, so the name will be more informative. We can also see above that `Papua New Guinea` (PNG) has two EEZ codes (rows 9 and 10 above). This is because there is a small section of the EEZ that is shared with Australia under the [Torres Strait Treaty of 1978](https://www.ags.gov.au/legal-briefing-no-116#_ftnref15). Under this treaty, the shared EEZ between these two countries is designated as a Protected Zone that allow inhabitants of PNG and the Torres Strait to move freely to undertake traditional activities, such as traditional fishing. Given that this and the fact that this project is concerned with changes in fish biomass, we will consider the entire EEZ to be part of `Papua New Guinea`, so we will provide a unique ID identifying these two areas. We will also rename `Kiribati`, so it includes the names of the subregion under the `name` column.  
+  
 ```{r}
 gbr_eez_SP <- gbr_eez_SP %>% 
   #Changing GBR name and adding a unique ID
@@ -158,14 +161,21 @@ gbr_eez_SP <- gbr_eez_SP %>%
   remove_empty("cols") %>% 
   #We will give give the small MRGID value to all polygons as an ID
   group_by(name) %>% 
-  mutate(n = n(), ID = case_when(n > 1 ~ min(MRGID), T ~ MRGID)) %>% 
-  select(-n)
+  #Given same ID to two EEZs in Papua New Guinea
+  mutate(ID = case_when(str_detect(name, "Papua") ~ min(MRGID),
+                        T ~ MRGID),
+         #Including subregion name in Kiribati EEZs
+         name = case_when(name == "Kiribati" ~ paste(name, TERRITORY1, sep = " - "),
+                          name == "Micronesia" ~ paste0(name, " (FSM)"),
+                          T ~ name)) |> 
+  ungroup()
 
 #Checking results
 gbr_eez_SP
 ```
-
-We will plot the shapefile to inspect the results.
+  
+We will plot the shapefile to inspect the results.  
+  
 ```{r}
 #Plotting FAO shapefile
 gbr_eez_SP %>% 
@@ -176,10 +186,12 @@ gbr_eez_SP %>%
   theme(legend.position = "top")+
   lims(y = c(-40, 30))
 ```
-
+    
+The map now looks as we expected, so we can save the results into memory for using in mapping.  
+   
 ## Saving results
-We will extract the names and unique IDs for the EEZs and GBR before we move onto creating the raster masks.
-
+We will extract the names and unique IDs for the EEZs and GBR before we move onto creating the raster masks.  
+  
 ```{r, eval = F}
 #Identify EEZ and countries associated with them from extracted data files
 SP_codes <- gbr_eez_SP %>% 
@@ -190,23 +202,25 @@ SP_codes <- gbr_eez_SP %>%
 SP_codes %>% 
   write_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv")
 ```
-
-We will save the shapefile with the South Pacific EEZs.
-
+  
+We will save the shapefile with the South Pacific EEZs.  
+  
 ```{r, eval = F}
 gbr_eez_SP %>% 
   #We will also allow shapefile to be rewritten
   st_write("../Outputs/SouthPacific_EEZ-GBR.shp", delete_layer = T)
 ```
-## Creating raster masks
-We will need to create a raster mask for each unique grid. In this case, IPSL and GFDL share the same 60 arc minute (1 degree) grid, but IPSL inputs are also available at a 120 arc minute (2 degree) resolution. This means that we will need to create two different masks.  
   
-Since none of the polygons included in our South Pacific EEZ/GBR shapefile overlap, we can create a 2-dimensional mask, which would speed up data extractions. Finally, since data extractions need to be multiplied by the area of each grid cell, our masks will include the area of each grid cell.
-
+## Creating raster masks
+We will need to create a raster mask for each unique grid. In this case, IPSL and GFDL share the same 60 arc minute ($1^\circ$) grid, but IPSL inputs are also available at a 120 arc minute ($2^{\circ}$) resolution. This means that we will need to create two different masks.   
+  
+Since none of the polygons included in our South Pacific EEZ/GBR shapefile overlap, we can create a 2-dimensional mask, which would speed up data extractions. Finally, since data extractions need to be multiplied by the area of each grid cell, our masks will include the area of each grid cell.  
+  
 ### Calculating grid cell area
-The `raster` package allows us to calculate the area of grid cells in $km^2$ in just one line of code. We can save this to calculate weighted means by area. We will use the raster above as a base, and we will save the result on our disk.
-
-We will define a function that will automate the grid cell area calculation, and save the result.
+The `raster` package allows us to calculate the area of grid cells in $km^2$ in just one line of code. We can save this to calculate weighted means by area. We will use the raster above as a base, and we will save the result on our disk.  
+  
+We will define a function that will automate the grid cell area calculation, and save the result.  
+  
 ```{r}
 #Input description
 #raster_path is the full file path to the sample grid
@@ -230,8 +244,9 @@ raster_area <- function(raster_path, folder_out_path){
             varname = "area", unit = "km2")
 }
 ```
-
-We will now apply the function to all grids.
+  
+We will now apply the function to all grids.  
+  
 ```{r, eval = F}
 #Getting full file paths for all sample rasters
 raster_files <- list.files("../Data/Model_sample_grid/", full.names = T)
@@ -240,10 +255,10 @@ raster_files <- list.files("../Data/Model_sample_grid/", full.names = T)
 raster_files %>% 
   map(\(x) raster_area(x, folder_out_path ="../Outputs"))
 ```
-
+  
 ### Creating masked grid area raster
-We will now mask the grid cell area raster using the shapefile we created above. First, we define a function to mask rasters.
-
+We will now mask the grid cell area raster using the shapefile we created above. First, we define a function to mask rasters.  
+  
 ```{r}
 raster_mask <- function(raster_path, shp, ID, folder_out_path){
   #Extracting model name and resolution
@@ -264,8 +279,9 @@ raster_mask <- function(raster_path, shp, ID, folder_out_path){
             varname = "mask", unit = "km2")
 }
 ```
-
-Now we apply this function to all grid area rasters on disk.
+  
+Now we apply this function to all grid area rasters on disk.  
+  
 ```{r, eval = F}
 #Getting list of grid area rasters
 area_grid <- list.files("../Outputs", pattern = "^grid.*nc$", full.names = T)
@@ -274,10 +290,10 @@ area_grid <- list.files("../Outputs", pattern = "^grid.*nc$", full.names = T)
 area_grid %>% 
   map(\(x) raster_mask(x, gbr_eez_SP, gbr_eez_SP$ID, folder_out_path ="../Outputs"))
 ```
-
+  
 ## Creating a 2D mask in `csv` format
-Depending on the format of your data, it may be better to have a 2D mask in `csv` format. We can create one using the raster we created in the previous step. We will switch to `R` to complete this step.
-
+Depending on the format of your data, it may be better to have a 2D mask in `csv` format. We can create one using the raster we created in the previous step. We will switch to `R` to complete this step.  
+  
 ```{r}
 #Turning rasters into CSV
 raster_to_csv <- function(raster_path){
@@ -299,7 +315,8 @@ raster_to_csv <- function(raster_path){
 }
 ```
 
-Applying function
+Applying function to all raster masks.  
+  
 ```{r, eval = F}
 #Getting list of mask rasters
 mask_files <- list.files("../Outputs", pattern = "^mask_.*nc$", full.names = T)
@@ -308,25 +325,27 @@ mask_files <- list.files("../Outputs", pattern = "^mask_.*nc$", full.names = T)
 mask_files %>% 
   map(\(x) raster_to_csv(x))
 ```
-
-
-The final step is to merge these two files together. We will do this in `Python`.
-
+  
+The final step is to merge these two files together. We will do this in `Python`.  
+  
 # `Python`-based code
+  
 ```{r, eval = F}
 #Activating conda
 repl_python()
 ```
-
+  
 ## Loading libraries
+  
 ```{python, eval = F}
 import xarray as xr
 from glob import glob
 import os
 import re
 ```
-
+  
 ## Getting file paths for area grid rasters and masks
+  
 ```{python, eval = F}
 #Rasters for grid area
 area_grid = sorted(glob('../Outputs/grid-area*.nc'))
@@ -334,9 +353,10 @@ area_grid = sorted(glob('../Outputs/grid-area*.nc'))
 #Raster with mask
 mask_grid = sorted(glob('../Outputs/mask_*arcmin*.nc'))
 ```
+  
 ## Creating masked raster
-Creating function to mask grid area raster.
-
+Creating function to mask grid area raster.  
+  
 ```{python, eval = F}
 def mask_raster(area_path, mask_path):
   #Creating name for new raster
@@ -351,9 +371,9 @@ def mask_raster(area_path, mask_path):
   area.coords['mask'] = (('latitude', 'longitude'), mask.values)
   area.to_netcdf(file_out)
 ```
-
-Applying function to all grid area rasters.
-
+  
+Applying function to all grid area rasters.  
+  
 ```{python, eval = F}
 [mask_raster(a, mask_grid[i]) for i, a in enumerate(area_grid)]
 ```

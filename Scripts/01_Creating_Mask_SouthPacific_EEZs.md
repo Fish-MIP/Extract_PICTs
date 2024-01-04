@@ -60,6 +60,7 @@ combination of `R` and `Python` with the `reticulate` library.
 ``` r
 library(sf)
 library(terra)
+library(nngeo)
 library(tidyverse)
 library(reticulate)
 library(jsonlite)
@@ -186,6 +187,7 @@ eez_SP %>%
 ```
 
 ![](01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
 All the EEZs are located within our area of interest, the South Pacific,
 we can now save the results.
 
@@ -222,12 +224,8 @@ gbr
 
 ``` r
 #Turning off spherical geometry
-sf_use_s2(F)
-```
+# sf_use_s2(F)
 
-    ## Spherical geometry (s2) switched off
-
-``` r
 #Merging shapefiles
 gbr_eez_SP <- bind_rows(gbr, eez_SP)
 
@@ -286,8 +284,19 @@ gbr_eez_SP
     ## 9      3717 MULTIPOLYGON (((142.8511 -9...
     ## 10  2399638 MULTIPOLYGON (((145 -7.7348...
 
-We will edit the GBR entry, so the name will be more informative. We
-will also provide a unique ID and remove any columns that are empty.
+We will edit the GBR entry, so the name will be more informative. We can
+also see above that `Papua New Guinea` (PNG) has two EEZ codes (rows 9
+and 10 above). This is because there is a small section of the EEZ that
+is shared with Australia under the [Torres Strait Treaty of
+1978](https://www.ags.gov.au/legal-briefing-no-116#_ftnref15). Under
+this treaty, the shared EEZ between these two countries is designated as
+a Protected Zone that allow inhabitants of PNG and the Torres Strait to
+move freely to undertake traditional activities, such as traditional
+fishing. Given that this and the fact that this project is concerned
+with changes in fish biomass, we will consider the entire EEZ to be part
+of `Papua New Guinea`, so we will provide a unique ID identifying these
+two areas. We will also rename `Kiribati`, so it includes the names of
+the subregion under the `name` column.
 
 ``` r
 gbr_eez_SP <- gbr_eez_SP %>% 
@@ -304,8 +313,14 @@ gbr_eez_SP <- gbr_eez_SP %>%
   remove_empty("cols") %>% 
   #We will give give the small MRGID value to all polygons as an ID
   group_by(name) %>% 
-  mutate(n = n(), ID = case_when(n > 1 ~ min(MRGID), T ~ MRGID)) %>% 
-  select(-n)
+  #Given same ID to two EEZs in Papua New Guinea
+  mutate(ID = case_when(str_detect(name, "Papua") ~ min(MRGID),
+                        T ~ MRGID),
+         #Including subregion name in Kiribati EEZs
+         name = case_when(name == "Kiribati" ~ paste(name, TERRITORY1, sep = " - "),
+                          name == "Micronesia" ~ paste0(name, " (FSM)"),
+                          T ~ name)) |> 
+  ungroup()
 
 #Checking results
 gbr_eez_SP
@@ -317,13 +332,12 @@ gbr_eez_SP
     ## Bounding box:  xmin: -180 ymin: -31.24447 xmax: 180 ymax: 23.89565
     ## Geodetic CRS:  WGS 84
     ## # A tibble: 26 × 11
-    ## # Groups:   name [23]
     ##    id    name          MRGID GEONAME SOVEREIGN1 SOVEREIGN2 TERRITORY1 TERRITORY2
     ##    <fct> <chr>         <dbl> <chr>   <chr>      <fct>      <fct>      <fct>     
     ##  1 <NA>  GBR            9999 Great … Australia  <NA>       <NA>       <NA>      
-    ##  2 KI    Kiribati       8450 Kiriba… Kiribati   <NA>       Phoenix G… <NA>      
-    ##  3 KI    Kiribati       8441 Kiriba… Kiribati   <NA>       Line Group <NA>      
-    ##  4 KI    Kiribati       8488 Kiriba… Kiribati   <NA>       Gilbert I… <NA>      
+    ##  2 KI    Kiribati - P…  8450 Kiriba… Kiribati   <NA>       Phoenix G… <NA>      
+    ##  3 KI    Kiribati - L…  8441 Kiriba… Kiribati   <NA>       Line Group <NA>      
+    ##  4 KI    Kiribati - G…  8488 Kiriba… Kiribati   <NA>       Gilbert I… <NA>      
     ##  5 PF    French Polyn…  8440 French… France     <NA>       French Po… <NA>      
     ##  6 MP    Northern Mar… 48980 Northe… United St… <NA>       Northern … <NA>      
     ##  7 WF    Wallis and F…  8454 Wallis… France     <NA>       Wallis an… <NA>      
@@ -347,6 +361,9 @@ gbr_eez_SP %>%
 ```
 
 ![](01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+The map now looks as we expected, so we can save the results into memory
+for using in mapping.
 
 ## Saving results
 
@@ -375,8 +392,8 @@ gbr_eez_SP %>%
 ## Creating raster masks
 
 We will need to create a raster mask for each unique grid. In this case,
-IPSL and GFDL share the same 60 arc minute (1 degree) grid, but IPSL
-inputs are also available at a 120 arc minute (2 degree) resolution.
+IPSL and GFDL share the same 60 arc minute ($1^\circ$) grid, but IPSL
+inputs are also available at a 120 arc minute ($2^{\circ}$) resolution.
 This means that we will need to create two different masks.
 
 Since none of the polygons included in our South Pacific EEZ/GBR
@@ -494,7 +511,7 @@ raster_to_csv <- function(raster_path){
 }
 ```
 
-Applying function
+Applying function to all raster masks.
 
 ``` r
 #Getting list of mask rasters
