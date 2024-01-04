@@ -106,15 +106,17 @@ bio_plots |>
   scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
                      breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
   facet_wrap(~name, scales = "free_y")+
-  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
-                                "SSP5-8.5" = "#1b9e77"))+
-  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
-                               "SSP5-8.5" = "#1b9e77"))+
+  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
+                                "SSP5-8.5" = "#ee3377"))+
+  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
+                               "SSP5-8.5" = "#ee3377"))+
+  guides(color = guide_legend(nrow = 3))+
   theme_bw()+
-  theme(legend.position = "bottom", legend.justification = "right",
-        legend.box.spacing = unit(-2, "cm"), panel.grid.minor.y = element_blank(),
-        plot.margin = margin(b = 1.05, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
-        legend.text = element_text(size = 11), axis.title.x = element_blank(),
+  theme(legend.position = "bottom", legend.justification = "right", 
+        legend.key.size = unit(1., "cm"),
+        legend.box.spacing = unit(-3.5, "cm"), panel.grid.minor.y = element_blank(),
+        plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
+        legend.text = element_text(size = 13), axis.title.x = element_blank(),
         legend.title = element_blank(), axis.title.y = element_text(size = 12),
         axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65))+
   ylab("% biomass change (reference period: 2010-2020)")

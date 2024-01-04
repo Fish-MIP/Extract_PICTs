@@ -49,7 +49,7 @@ bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")|>
   filter(mask != 9999)
 ```
 
-    ## Rows: 46460 Columns: 6
+    ## Rows: 50500 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (3): mem, esm, scenario
@@ -142,12 +142,12 @@ head(bio_plots)
     ## # A tibble: 6 × 7
     ##    mask scenario  year rel_change_lower rel_change_median rel_change_max name   
     ##   <dbl> <chr>    <dbl>            <dbl>             <dbl>          <dbl> <chr>  
-    ## 1  8312 SSP1-2.6  2015          -13.3              -1.81            4.63 New Ca…
-    ## 2  8312 SSP1-2.6  2016          -11.9               0.701          30.7  New Ca…
-    ## 3  8312 SSP1-2.6  2017           -5.50              1.06            4.11 New Ca…
-    ## 4  8312 SSP1-2.6  2018           -9.33              1.33           21.1  New Ca…
-    ## 5  8312 SSP1-2.6  2019           -0.361             3.04           20.1  New Ca…
-    ## 6  8312 SSP1-2.6  2020           -4.98              0.965           5.54 New Ca…
+    ## 1  8312 SSP1-2.6  2015           -12.3             -2.20            3.82 New Ca…
+    ## 2  8312 SSP1-2.6  2016           -11.6              0.619          26.3  New Ca…
+    ## 3  8312 SSP1-2.6  2017            -4.66             3.07            5.02 New Ca…
+    ## 4  8312 SSP1-2.6  2018            -8.56             2.25           21.3  New Ca…
+    ## 5  8312 SSP1-2.6  2019            -1.59             3.31           21.1  New Ca…
+    ## 6  8312 SSP1-2.6  2020            -4.33             1.04            6.84 New Ca…
 
 ## Plotting data
 
@@ -167,15 +167,17 @@ bio_plots |>
   scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
                      breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
   facet_wrap(~name, scales = "free_y")+
-  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
-                                "SSP5-8.5" = "#1b9e77"))+
-  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#7570b3", 
-                               "SSP5-8.5" = "#1b9e77"))+
+  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
+                                "SSP5-8.5" = "#ee3377"))+
+  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
+                               "SSP5-8.5" = "#ee3377"))+
+  guides(color = guide_legend(nrow = 3))+
   theme_bw()+
-  theme(legend.position = "bottom", legend.justification = "right",
-        legend.box.spacing = unit(-2, "cm"), panel.grid.minor.y = element_blank(),
-        plot.margin = margin(b = 1.05, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
-        legend.text = element_text(size = 11), axis.title.x = element_blank(),
+  theme(legend.position = "bottom", legend.justification = "right", 
+        legend.key.size = unit(1., "cm"),
+        legend.box.spacing = unit(-3.5, "cm"), panel.grid.minor.y = element_blank(),
+        plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
+        legend.text = element_text(size = 13), axis.title.x = element_blank(),
         legend.title = element_blank(), axis.title.y = element_text(size = 12),
         axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65))+
   ylab("% biomass change (reference period: 2010-2020)")
