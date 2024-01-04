@@ -1,8 +1,8 @@
 name,ID,MRGID
 GBR,9999,9999
-Kiribati,8441,8450
-Kiribati,8441,8441
-Kiribati,8441,8488
+Kiribati - Phoenix Group,8450,8450
+Kiribati - Line Group,8441,8441
+Kiribati - Gilbert Islands,8488,8488
 French Polynesia,8440,8440
 Northern Mariana Islands,48980,48980
 Wallis and Futuna,8454,8454
@@ -11,7 +11,7 @@ Papua New Guinea,8324,21798
 Papua New Guinea,8324,8324
 Palau,8315,8315
 Tokelau,8449,8449
-Micronesia,8316,8316
+Micronesia (FSM),8316,8316
 Fiji,8325,8325
 Cook Islands,8446,8446
 Solomon Islands,8314,8314
