@@ -36,6 +36,7 @@ library(rnaturalearth)
 library(cmocean)
 library(cowplot)
 library(sf)
+library(nngeo)
 ```
 
 # Loading information about PICTs
@@ -208,7 +209,7 @@ mask_base <- read_csv("../Outputs/mask_1deg.csv") |>
   rename(x = Lon, y = Lat)
 ```
 
-    ## Rows: 2356 Columns: 3
+    ## Rows: 2746 Columns: 3
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (3): Lon, Lat, mask
@@ -270,7 +271,9 @@ picts <- read_sf("../Outputs/SouthPacific_EEZ-GBR.shp") |>
   #Ensure ID and name are factors
   mutate(ID_1 = as.factor(ID_1)) |> 
   #Ensuring shapefile crosses the international dateline
-  st_shift_longitude()
+  st_shift_longitude() |> 
+  #Removing holes from islands inside EEZ
+  st_remove_holes()
 ```
 
     ## `summarise()` has grouped output by 'ID_1'. You can override using the
@@ -299,6 +302,8 @@ pal <- c(cmocean("matter", start = 0.1, end = 0.8, direction = -1)(179),
 All maps share the same colour palette, so we will not include legends
 in any of them except for the last one.
 
+Grey cells are areas with no data in the models.
+
 ``` r
 #SSP2-4.5 2045-2055 
 p50_245 <- maps_data |>
@@ -306,9 +311,9 @@ p50_245 <- maps_data |>
   geom_tile()+
   scale_fill_stepsn(colors = pal, n.breaks = 11, 
                     limits = c(-75, 15), show.limits = T)+
+  geom_sf(inherit.aes = F, data = picts, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
   geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, aes(color = ID_1), 
-          show.legend = F, linewidth = 0.5)+
   theme_bw()+
   labs(title = "SSP2-4.5: 2045-2055")+
   theme(axis.title = element_blank(), 
@@ -322,9 +327,9 @@ p50_585 <- maps_data |>
   geom_tile()+
   scale_fill_stepsn(colors = pal, n.breaks = 11, 
                     limits = c(-75, 15), show.limits = T)+
+  geom_sf(inherit.aes = F, data = picts, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
   geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, aes(color = ID_1), 
-          show.legend = F, linewidth = 0.5)+
   theme_bw()+
   labs(title = "SSP5-8.5: 2045-2055")+
   theme(axis.title = element_blank(), 
@@ -338,9 +343,9 @@ p80_245 <- maps_data |>
   geom_tile()+
   scale_fill_stepsn(colors = pal, n.breaks = 11, 
                     limits = c(-75, 15), show.limits = T)+
+  geom_sf(inherit.aes = F, data = picts, fill = NA,
+          show.legend = F, linewidth = 0.25)+
   geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, aes(color = ID_1), 
-          show.legend = F, linewidth = 0.5)+
   theme_bw()+
   labs(title = "SSP2-4.5: 2085-2095")+
   theme(axis.title = element_blank(), 
@@ -354,9 +359,9 @@ p80_585 <- maps_data |>
   geom_tile()+
   scale_fill_stepsn(colors = pal, n.breaks = 11, 
                     limits = c(-75, 15), show.limits = T)+
+  geom_sf(inherit.aes = F, data = picts, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
   geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, aes(color = ID_1), 
-          show.legend = F, linewidth = 0.5)+
   theme_bw()+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
@@ -394,5 +399,5 @@ all_plots
 ## Saving final plot
 
 ``` r
-ggsave("../Outputs/sample_maps_perc_change.pdf", device = "pdf", width = 14, height = 9)
+ggsave("../Outputs/maps_perc_change_PICTs_40s-80s.pdf", device = "pdf", width = 14, height = 9)
 ```
