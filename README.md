@@ -1,7 +1,9 @@
 # Extract PICTs
 This repository contains the workflow developed to extract ISIMIP3B (CMIP6) input and output data for all scenarios to carry out vulnerability assessments for the South Pacific by the [Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP) group](https://www.isimip.org/about/marine-ecosystems-fisheries/).  
   
-The workflow includes a combination of `R` and `Python` scripts.
+The workflow includes a combination of `R` (files ending in `.Rmd` and `.md`) and `Python` (files ending in `.py`) scripts. These files can be found under the `Scripts` folder.  
+  
+**Note:** You will notice that there are two `R` files with the same name, but different files extension (`.Rmd` and `.md`). These two files contain the same information, the difference is that the `.md` files are shown nicely in GitHub, while the `.Rmd` files are easier to work with in RStudio. In other words, if you would like to have a quick look at the content of the `R` scripts in your browser, we recommend you use the files ending in `.md`. But if you would like to run the script in your own computer, we recommend you use the files ending in `.Rmd`.  
   
 ## Model data
 All model data used in this workflow is hosted in the [DKRZ server](https://www.dkrz.de/en). If you do not have a DKRZ account, you can set up a new account by following [these instructions](https://www.isimip.org/dashboard/accessing-isimip-data-dkrz-server/).  
@@ -31,4 +33,7 @@ If you are using the `R` notebooks, run the following two lines in the RStudio c
 ```
   
 The lines above will run a function that automatically checks if any `R` libraries used in this repository are not installed in your machine. If any libraries are missing, it will install them automatically. Bear in mind that these notebooks were developed in `R` version 4.3.0, so you may need to upgrade your `R` version if you encounter any problems during package installation.
-
+  
+## Do you have any comments or questions?
+If you found any issues with the code, have questions, or ideas on how to improve the code, you can reach out by creating a [new issue](https://github.com/Fish-MIP/Extract_PICTs/issues).  
+  
