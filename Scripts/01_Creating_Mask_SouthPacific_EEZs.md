@@ -22,8 +22,6 @@ Denisse Fierro Arcos
 - <a href="#saving-results" id="toc-saving-results">Saving results</a>
 - <a href="#creating-raster-masks" id="toc-creating-raster-masks">Creating
   raster masks</a>
-  - <a href="#calculating-grid-cell-area"
-    id="toc-calculating-grid-cell-area">Calculating grid cell area</a>
   - <a href="#creating-masked-grid-area-raster"
     id="toc-creating-masked-grid-area-raster">Creating masked grid area
     raster</a>
@@ -65,6 +63,7 @@ library(reticulate)
 library(jsonlite)
 library(rnaturalearth)
 library(janitor)
+library(nngeo)
 ```
 
 ## Loading EEZs of the world shapefile
@@ -316,6 +315,7 @@ gbr_eez_SP <- gbr_eez_SP %>%
          name = case_when(name == "Kiribati" ~ paste(name, TERRITORY1, sep = " - "),
                           name == "Micronesia" ~ paste0(name, " (FSM)"),
                           T ~ name)) |> 
+  st_remove_holes() |> 
   ungroup()
 
 #Checking results
@@ -327,21 +327,51 @@ gbr_eez_SP
     ## Dimension:     XY
     ## Bounding box:  xmin: -180 ymin: -31.24447 xmax: 180 ymax: 23.89565
     ## Geodetic CRS:  WGS 84
-    ## # A tibble: 26 × 11
-    ##    id    name          MRGID GEONAME SOVEREIGN1 SOVEREIGN2 TERRITORY1 TERRITORY2
-    ##    <fct> <chr>         <dbl> <chr>   <chr>      <fct>      <fct>      <fct>     
-    ##  1 <NA>  GBR            9999 Great … Australia  <NA>       <NA>       <NA>      
-    ##  2 KI    Kiribati - P…  8450 Kiriba… Kiribati   <NA>       Phoenix G… <NA>      
-    ##  3 KI    Kiribati - L…  8441 Kiriba… Kiribati   <NA>       Line Group <NA>      
-    ##  4 KI    Kiribati - G…  8488 Kiriba… Kiribati   <NA>       Gilbert I… <NA>      
-    ##  5 PF    French Polyn…  8440 French… France     <NA>       French Po… <NA>      
-    ##  6 MP    Northern Mar… 48980 Northe… United St… <NA>       Northern … <NA>      
-    ##  7 WF    Wallis and F…  8454 Wallis… France     <NA>       Wallis an… <NA>      
-    ##  8 VU    Vanuatu        8313 Vanuat… Vanuatu    <NA>       Vanuatu    <NA>      
-    ##  9 PG    Papua New Gu… 21798 Protec… Papua New… Australia  Papua New… Australia 
-    ## 10 PG    Papua New Gu…  8324 Papua … Papua New… <NA>       Papua New… <NA>      
-    ## # ℹ 16 more rows
-    ## # ℹ 3 more variables: AREA_KM2 <dbl>, geometry <MULTIPOLYGON [°]>, ID <dbl>
+    ## First 10 features:
+    ##      id                       name MRGID
+    ## 1  <NA>                        GBR  9999
+    ## 2    KI   Kiribati - Phoenix Group  8450
+    ## 3    KI      Kiribati - Line Group  8441
+    ## 4    KI Kiribati - Gilbert Islands  8488
+    ## 5    PF           French Polynesia  8440
+    ## 6    MP   Northern Mariana Islands 48980
+    ## 7    WF          Wallis and Futuna  8454
+    ## 8    VU                    Vanuatu  8313
+    ## 9    PG           Papua New Guinea 21798
+    ## 10   PG           Papua New Guinea  8324
+    ##                                                      GEONAME       SOVEREIGN1
+    ## 1                                         Great Barrier Reef        Australia
+    ## 2         Kiribati Exclusive Economic Zone (Phoenix Islands)         Kiribati
+    ## 3            Kiribati Exclusive Economic Zone (Line Islands)         Kiribati
+    ## 4         Kiribati Exclusive Economic Zone (Gilbert Islands)         Kiribati
+    ## 5                  French Polynesian Exclusive Economic Zone           France
+    ## 6                   Northern Mariana Exclusive Economic Zone    United States
+    ## 7                  Wallis and Futuna Exclusive Economic Zone           France
+    ## 8                            Vanuatu Exclusive Economic Zone          Vanuatu
+    ## 9  Protected Zone established under the Torres Strait Treaty Papua New Guinea
+    ## 10                 Papua New Guinean Exclusive Economic Zone Papua New Guinea
+    ##    SOVEREIGN2               TERRITORY1 TERRITORY2 AREA_KM2    ID
+    ## 1        <NA>                     <NA>       <NA>       NA  9999
+    ## 2        <NA>            Phoenix Group       <NA>   745782  8450
+    ## 3        <NA>               Line Group       <NA>  1641193  8441
+    ## 4        <NA>          Gilbert Islands       <NA>  1053245  8488
+    ## 5        <NA>         French Polynesia       <NA>  4766689  8440
+    ## 6        <NA> Northern Mariana Islands       <NA>   763626 48980
+    ## 7        <NA>        Wallis and Futuna       <NA>   262750  8454
+    ## 8        <NA>                  Vanuatu       <NA>   623424  8313
+    ## 9   Australia         Papua New Guinea  Australia     3717  8324
+    ## 10       <NA>         Papua New Guinea       <NA>  2399638  8324
+    ##                          geometry
+    ## 1  MULTIPOLYGON (((152.0794 -2...
+    ## 2  MULTIPOLYGON (((-168.9077 -...
+    ## 3  MULTIPOLYGON (((-155.3573 4...
+    ## 4  MULTIPOLYGON (((-179.9966 -...
+    ## 5  MULTIPOLYGON (((-135.9325 -...
+    ## 6  MULTIPOLYGON (((148.0771 12...
+    ## 7  MULTIPOLYGON (((180 -12.938...
+    ## 8  MULTIPOLYGON (((171.6267 -1...
+    ## 9  MULTIPOLYGON (((142.8511 -9...
+    ## 10 MULTIPOLYGON (((145 -7.7348...
 
 We will plot the shapefile to inspect the results.
 
@@ -388,60 +418,14 @@ gbr_eez_SP %>%
 ## Creating raster masks
 
 We will need to create a raster mask for each unique grid. In this case,
-IPSL and GFDL share the same 60 arc minute ($1^\circ$) grid, but IPSL
-inputs are also available at a 120 arc minute ($2^{\circ}$) resolution.
-This means that we will need to create two different masks.
+all FishMIP models share the same $1^\circ$ grid, so we will need to
+create one mask.
 
 Since none of the polygons included in our South Pacific EEZ/GBR
 shapefile overlap, we can create a 2-dimensional mask, which would speed
 up data extractions. Finally, since data extractions need to be
 multiplied by the area of each grid cell, our masks will include the
 area of each grid cell.
-
-### Calculating grid cell area
-
-The `raster` package allows us to calculate the area of grid cells in
-$km^2$ in just one line of code. We can save this to calculate weighted
-means by area. We will use the raster above as a base, and we will save
-the result on our disk.
-
-We will define a function that will automate the grid cell area
-calculation, and save the result.
-
-``` r
-#Input description
-#raster_path is the full file path to the sample grid
-#folder_out_path is the path to the folder where area masks will be saved
-raster_area <- function(raster_path, folder_out_path){
-  #Extracting model name and resolution
-  model_name <- str_extract(raster_path, "grid//(.*)_r", group = 1)
-  res <- str_extract(raster_path, "_(\\d{2,3}arcmin)_", group = 1)
-  #Writing file name for mask
-  file_out <- paste0(paste("grid-area", model_name, res, sep = "_"), ".nc")
-  
-  #Loading raster
-  ras <- rast(raster_path)
-  
-  #Calculating area
-  area_grid <- cellSize(ras, unit = "km")
-  
-  #Saving results
-  writeCDF(area_grid, file.path(folder_out_path, file_out), overwrite = T, 
-            #We will save the variable names so they match the Fish-MIP models
-            varname = "area", unit = "km2")
-}
-```
-
-We will now apply the function to all grids.
-
-``` r
-#Getting full file paths for all sample rasters
-raster_files <- list.files("../Data/Model_sample_grid/", full.names = T)
-
-#Applying function to all rasters
-raster_files %>% 
-  map(\(x) raster_area(x, folder_out_path ="../Outputs"))
-```
 
 ### Creating masked grid area raster
 
@@ -451,10 +435,9 @@ created above. First, we define a function to mask rasters.
 ``` r
 raster_mask <- function(raster_path, shp, ID, folder_out_path){
   #Extracting model name and resolution
-  model_name <- str_extract(raster_path, "area_(.*)_\\d{2,3}", group = 1)
-  res <- str_extract(raster_path, "_(\\d{2,3}arcmin).", group = 1)
+  res <- str_extract(raster_path, "_(\\d{1,3}deg).", group = 1)
   #Writing file name for mask
-  file_out <- paste0(paste("mask", model_name, res, sep = "_"), ".nc")
+  file_out <- paste0(paste("mask", res, sep = "_"), ".nc")
   
   #Loading raster
   ras <- rast(raster_path)
@@ -465,7 +448,7 @@ raster_mask <- function(raster_path, shp, ID, folder_out_path){
   #Saving results
   writeCDF(area_grid, file.path(folder_out_path, file_out), overwrite = T, 
             #We will save the variable names so they match the Fish-MIP models
-            varname = "mask", unit = "km2")
+            varname = "mask")
 }
 ```
 
@@ -473,11 +456,10 @@ Now we apply this function to all grid area rasters on disk.
 
 ``` r
 #Getting list of grid area rasters
-area_grid <- list.files("../Outputs", pattern = "^grid.*nc$", full.names = T)
+area_grid <- "../../Data_extractions_EEZ/ESM_Sample_Data/area_1deg.nc"
 
 #Applying masking function
-area_grid %>% 
-  map(\(x) raster_mask(x, gbr_eez_SP, gbr_eez_SP$ID, folder_out_path ="../Outputs"))
+raster_mask(area_grid, gbr_eez_SP, gbr_eez_SP$ID, folder_out_path ="../Outputs")
 ```
 
 ## Creating a 2D mask in `csv` format
@@ -541,10 +523,10 @@ import re
 
 ``` python
 #Rasters for grid area
-area_grid = sorted(glob('../Outputs/grid-area*.nc'))
+area_grid = [r.area_grid]
 
 #Raster with mask
-mask_grid = sorted(glob('../Outputs/mask_*arcmin*.nc'))
+mask_grid = sorted(glob('../Outputs/mask_1deg.nc'))
 ```
 
 ## Creating masked raster
@@ -558,7 +540,7 @@ def mask_raster(area_path, mask_path):
   file_out = os.path.join(fp[0], fp[1], f'masked-{fp[2]}')
   
   #Loading mask and area rasters
-  area = xr.open_dataset(area_path).area
+  area = xr.open_dataset(area_path).area_m
   mask = xr.open_dataset(mask_path).mask
   
   #Adding mask as coordinate
