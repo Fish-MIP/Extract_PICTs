@@ -1,4 +1,6 @@
-# Extract PICTs
+[![FAIR checklist badge](https://fairsoftwarechecklist.net/badge.svg)](https://fairsoftwarechecklist.net/v0.2?f=21&a=30112&i=31321&r=123)
+
+# Assessing fish biomass changes in Pacific Island Countries and Territories (PICTs) under different climate change scenarios
 This repository contains the workflow developed to extract ISIMIP3B (CMIP6) input and output data for all scenarios to carry out vulnerability assessments for the South Pacific by the [Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP) group](https://www.isimip.org/about/marine-ecosystems-fisheries/).  
   
 The workflow includes a combination of `R` (files ending in `.Rmd` and `.md`) and `Python` (files ending in `.py`) scripts. These files can be found under the `Scripts` folder.  
