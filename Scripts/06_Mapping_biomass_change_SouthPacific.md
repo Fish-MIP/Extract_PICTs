@@ -14,11 +14,14 @@ Denisse Fierro Arcos
 - <a href="#calculating--change-in-fish-biomass-for-fishmip-ensemble"
   id="toc-calculating--change-in-fish-biomass-for-fishmip-ensemble">Calculating
   % change in fish biomass for FishMIP ensemble</a>
+- <a href="#estimating-biomass-values-in-coastal-areas"
+  id="toc-estimating-biomass-values-in-coastal-areas">Estimating biomass
+  values in coastal areas</a>
+  - <a href="#preparing-grid-to-be-used-for-interpolations"
+    id="toc-preparing-grid-to-be-used-for-interpolations">Preparing grid to
+    be used for interpolations</a>
 - <a href="#loading-relevant-shapefiles"
   id="toc-loading-relevant-shapefiles">Loading relevant shapefiles</a>
-  - <a href="#base-map" id="toc-base-map">Base map</a>
-  - <a href="#pict-eez-boundaries" id="toc-pict-eez-boundaries">PICT EEZ
-    boundaries</a>
 - <a href="#plotting-maps" id="toc-plotting-maps">Plotting maps</a>
   - <a href="#creating-colour-palette"
     id="toc-creating-colour-palette">Creating colour palette</a>
@@ -36,7 +39,9 @@ library(rnaturalearth)
 library(cmocean)
 library(cowplot)
 library(sf)
-library(nngeo)
+library(gstat)
+library(stars)
+library(terra)
 ```
 
 # Loading information about PICTs
@@ -46,16 +51,27 @@ unique ID in the fish biomass estimates from FishMIP models. We will
 exclude the Great Barrier Reef (GBR) because it is not relevant here.
 
 ``` r
-PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |> 
-  #Removing GBR data
-  filter(name != "GBR")
+#Loading PICTs EEZ mask and GBR boundaries 
+mask <- read_csv("../Outputs/mask_1deg.csv") |> 
+  #Adding names to identify PICTS
+  left_join(read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv", col_select = c(name, MRGID)),
+            by = c("mask"= "MRGID")) |> 
+  #Rename coordinates
+  rename(x = Lon, y = Lat)
 ```
 
-    ## Rows: 26 Columns: 3
+    ## Rows: 2746 Columns: 3
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## dbl (3): Lon, Lat, mask
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+    ## Rows: 26 Columns: 2
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (1): name
-    ## dbl (2): ID, MRGID
+    ## dbl (1): MRGID
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -96,16 +112,17 @@ for(m in members){
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
     #Ignore columns SOVEREIGN1-3 - not needed here
-    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m"))) |> 
+    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "eez", "GEONAME"))) |> 
     #Extract data only for years to be used in maps
     filter(year >= 2010 & year <= 2020 | year >= 2045 & year <= 2055 | year >= 2085 & year <= 2095) |> 
     #Do not keep data before 2021 for scenario ssp585
     filter(!((year >= 2015 & year <= 2020) & scenario == "ssp585")) |> 
-    #If EEZ is not a PICT mark as NA
-    mutate(eez = case_when(!eez %in% PICTS_keys$MRGID ~ NA,
-                           T ~ eez)) |> 
-    #Remove EEZs classified as NA (no PICTs)
-    drop_na(eez) 
+    #Applying mask to classify by PICT
+    right_join(mask, by = c("x", "y"))|> 
+    #Remove grid cells that are not within PICT boundaries
+    drop_na(mask) |> 
+    #Remove GBR
+    filter(mask != 9999)
   
   #Calculating biomass for SSP2-4.5 scenario
   ssp245 <- df_model |> 
@@ -120,7 +137,7 @@ for(m in members){
     mutate(scenario = "ssp245") |> 
     #Adding missing EEZ and name information
     left_join(df_model |> 
-                distinct(x, y, eez, GEONAME), by = c("x", "y"))
+                distinct(x, y, mask, name), by = c("x", "y"))
   
   #We will now remove the SSP1-2.6 data from 2045 and beyond 
   df_model <- df_model |> 
@@ -135,7 +152,7 @@ for(m in members){
            group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
                              T ~ group)) |> 
     #Calculate mean per ensemble member
-    group_by(x, y, mem, esm, eez, GEONAME, group) |> 
+    group_by(x, y, mem, esm, mask, name, group) |> 
     summarise(mean_bio = mean(biomass, na.rm = T)) |> 
     #Reorganise table to facilitate calculations
     pivot_wider(names_from = group, values_from = mean_bio) |> 
@@ -157,44 +174,44 @@ for(m in members){
 
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
     ## `summarise()` has grouped output by 'x', 'y', 'year', 'mem'. You can override
     ## using the `.groups` argument.
-    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'eez', 'GEONAME'.
-    ## You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mem', 'esm', 'mask', 'name'. You
+    ## can override using the `.groups` argument.
 
 # Calculating % change in fish biomass for FishMIP ensemble
 
@@ -203,80 +220,208 @@ for each FishMIP ensemble member. Now, we will calculate the mean change
 for the entire ensemble.
 
 ``` r
-#Load grid sample
-mask_base <- read_csv("../Outputs/mask_1deg.csv") |> 
-  select(!mask) |> 
-  rename(x = Lon, y = Lat)
-```
-
-    ## Rows: 2746 Columns: 3
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: ","
-    ## dbl (3): Lon, Lat, mask
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
 #Listing all relevant files to calculate biomass projections
 maps_data <- list.files("../Outputs/", pattern = "_map_data.csv", full.names = T) |> 
   map_df(~fread(.)) |> 
   #Calculations performed by year and EEZ
-  group_by(x, y, eez, GEONAME) |> 
+  group_by(x, y, mask, name) |> 
   #Apply calculations to biases only
   summarise(across(reference:rel_change_mean80_ssp585, 
                    #Listing statistics to be calculated
                    list(median = median), 
                    #Setting column names
                    .names = "{.col}_{.fn}")) |> 
-  ungroup() |> 
-  #Change longitudes range to 0-360 degrees
-  mutate(x = x%%360) 
+  #Remove any rows with NA values
+  drop_na() |> 
+  ungroup() 
 ```
 
-    ## `summarise()` has grouped output by 'x', 'y', 'eez'. You can override using the
-    ## `.groups` argument.
+    ## `summarise()` has grouped output by 'x', 'y', 'mask'. You can override using
+    ## the `.groups` argument.
+
+# Estimating biomass values in coastal areas
+
+Due to the coarse resolution of the grid used in FishMIP models, we do
+not have biomass estimates for certain coastal areas. We will resolve
+this by estimating biomass values in coastal areas using an inverse
+distance weighted interpolation (IDW). In simple terms, IDW determines
+the value of a grid cell using sample points around the grid cell.
+However, instead of applying a simple linear regression to estimate
+values, it applies a weighting, which is a function of the inverse
+distance between the empty grid cell and surrounding points. More
+details about IDW can be found
+[here](https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-idw-works.htm#:~:text=Inverse%20distance%20weighted%20(IDW)%20interpolation,of%20a%20locationally%20dependent%20variable.).
+
+## Preparing grid to be used for interpolations
+
+We will need a sample of model grids to predict values across all grid
+cells.
+
+``` r
+#Load grid sample for entire world
+mask_base <- rast("../../Data_extractions_EEZ/ESM_Sample_Data/area_1deg.nc") |> 
+  #Longitudes now range from 0 to 360
+  rotate(left = F) |> 
+  #We will extract latitudes where PICTs are located
+  crop(ext(120, 250, -32, 24))
+  
+#Loading PICTS
+picts_mask <- read_sf("../Outputs/SouthPacific_EEZ-GBR.shp") |> 
+  #Exclude Great Barrier Reef
+  filter(name != "GBR") |> 
+  #Create a buffer of ~100 km around the PICTs
+  st_buffer(dist = 1e5) |> 
+  #Longitudes now range from 0 to 360
+  st_shift_longitude()
+
+#Create a raster mask for IDW
+picts_mask <- rasterize(picts_mask, mask_base, values = 1, fun = "min") |> 
+  #Transform to stars as needed by idw function
+  st_as_stars()
+
+#We also need to provide locations as a shapefile in the idw function
+locs <- maps_data |> 
+  select(x, y) |> 
+  st_as_sf(coords = c("x", "y"), crs = 4326) |> 
+  st_shift_longitude()
+
+#Plotting results
+ggplot()+
+  geom_stars(data = picts_mask)+
+  geom_sf(data = locs, colour = "pink", alpha = 0.2)
+```
+
+![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+Now we have everything we need to perform the interpolation. We will
+loop through the four columns that need to be interpolated.
+
+``` r
+#Getting names of columns that we will interpolate
+bio_cols <- maps_data |> 
+  select(starts_with("rel_change")) |> 
+  names()
+
+#Start empty list to store results
+rast_list <- list()
+
+for(col in bio_cols){
+  #Define formula
+  form <- maps_data[[col]] ~ 1
+  
+  #Apply IDW - The only change is in the formula
+  int_bio <- idw(formula = as.formula(form), locations = locs, idp = 2, 
+                 newdata = picts_mask)
+  
+  #Changing name of layer containing predictors to the column name being interpolated
+  names(int_bio) <- str_replace(names(int_bio), "var1.pred", col)
+  
+  #Transform IDW result from stars to Spatraster
+  rast_list[col] <- int_bio |> 
+    #Only select predictions
+    select(all_of(col)) |> 
+    #Transform to data frame
+    as.data.frame() |> 
+    #Change longitudes to +/-180 range
+    mutate(x = ((x-180)%% 360)-180) |> 
+    #Transform to Spatraster
+    rast(crs = "epsg:4326") |> 
+    #Change longitude range to 0-360
+    rotate(left = F)
+}
+```
+
+    ## [inverse distance weighted interpolation]
+
+    ## Warning in `[<-`(`*tmp*`, col, value =
+    ## rotate(rast(mutate(as.data.frame(select(int_bio, : implicit list embedding of
+    ## S4 objects is deprecated
+
+    ## [inverse distance weighted interpolation]
+
+    ## Warning in `[<-`(`*tmp*`, col, value =
+    ## rotate(rast(mutate(as.data.frame(select(int_bio, : implicit list embedding of
+    ## S4 objects is deprecated
+
+    ## [inverse distance weighted interpolation]
+
+    ## Warning in `[<-`(`*tmp*`, col, value =
+    ## rotate(rast(mutate(as.data.frame(select(int_bio, : implicit list embedding of
+    ## S4 objects is deprecated
+
+    ## [inverse distance weighted interpolation]
+
+    ## Warning in `[<-`(`*tmp*`, col, value =
+    ## rotate(rast(mutate(as.data.frame(select(int_bio, : implicit list embedding of
+    ## S4 objects is deprecated
+
+``` r
+#Creating a data frame with interpolated values
+int_bio <- rast(rast_list) |> 
+  as.data.frame(xy = T)
+```
 
 # Loading relevant shapefiles
 
 We will use a map of the world as a base map, and the EEZ boundaries of
 PICTs.
 
-## Base map
+``` r
+sf_use_s2(F)
+```
 
-World map to be used as base map.
+    ## Spherical geometry (s2) switched off
 
 ``` r
 #Base map
-world <- ne_countries(returnclass = "sf") |> 
-  st_shift_longitude() |>
-  filter(continent %in% c("Oceania", "Asia"))
+world <- ne_countries(returnclass = "sf")
+
+#Split world in two hemispheres 
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -45, xmax = -120, ymax = 25)))
 ```
 
-## PICT EEZ boundaries
+    ## although coordinates are longitude/latitude, st_intersection assumes that they
+    ## are planar
 
-Since the original boundaries have longitude between $-180^{\circ}$ and
-$180^{\circ}$, we will change it to $0-360^{\circ}$ so all EEZs show in
-the centre of the map.
+    ## Warning: attribute variables are assumed to be spatially constant throughout
+    ## all geometries
 
 ``` r
+east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -45, xmax = 180, ymax = 25)))
+```
+
+    ## although coordinates are longitude/latitude, st_intersection assumes that they
+    ## are planar
+
+    ## Warning: attribute variables are assumed to be spatially constant throughout
+    ## all geometries
+
+``` r
+#Merge them together
+oceancent <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
+                              st_crs(east)), east)
+```
+
+    ## Warning: st_crs<- : replacing crs does not reproject data; use st_transform for
+    ## that
+
+``` r
+## PICT EEZ boundaries
 picts <- read_sf("../Outputs/SouthPacific_EEZ-GBR.shp") |> 
   #Exclude Great Barrier Reef
   filter(name != "GBR") |> 
   #Fix any invalid geometry
   st_make_valid() |> 
-  #Dissolve boundaries within PICTs
-  group_by(ID_1, name) |> 
-  summarise(across(geometry, ~ st_combine(.))) |> 
-  #Ensure ID and name are factors
-  mutate(ID_1 = as.factor(ID_1)) |> 
   #Ensuring shapefile crosses the international dateline
   st_shift_longitude() |> 
-  #Removing holes from islands inside EEZ
-  st_remove_holes()
+  #Dissolve boundaries within PICTs
+  group_by(MRGID, name) |> 
+  summarise(across(geometry, ~ st_combine(.))) |> 
+  #Ensure ID and name are factors
+  mutate(ID_1 = as.factor(MRGID))
 ```
 
-    ## `summarise()` has grouped output by 'ID_1'. You can override using the
+    ## `summarise()` has grouped output by 'MRGID'. You can override using the
     ## `.groups` argument.
 
 # Plotting maps
@@ -305,73 +450,48 @@ in any of them except for the last one.
 Grey cells are areas with no data in the models.
 
 ``` r
+#We will define the design to be applied to all figures
+gg_base <- list(geom_tile(),
+                scale_fill_stepsn(colors = pal, n.breaks = 11, 
+                                  limits = c(-75, 15), show.limits = T),
+                geom_sf(inherit.aes = F, data = picts, fill = NA, 
+                        show.legend = F, linewidth = 0.25),
+                geom_sf(inherit.aes = F, data = oceancent),
+                theme_bw(),
+                theme(axis.title = element_blank(), 
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"),
+                lims(x = c(110, 240), y = c(-45, 25)))
+
 #SSP2-4.5 2045-2055 
-p50_245 <- maps_data |>
+p50_245 <- int_bio |>
   ggplot(aes(x, y, fill = rel_change_mean50_ssp245_median))+
-  geom_tile()+
-  scale_fill_stepsn(colors = pal, n.breaks = 11, 
-                    limits = c(-75, 15), show.limits = T)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, 
-          show.legend = F, linewidth = 0.25)+
-  geom_sf(inherit.aes = F, data = world)+
-  theme_bw()+
-  labs(title = "SSP2-4.5: 2045-2055")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(110, 240), y = c(-45, 25))
+  gg_base+
+  labs(title = "SSP2-4.5: 2045-2055")
 
 #SSP5-8.5 2045-2055 
-p50_585 <- maps_data |> 
+p50_585 <- int_bio |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_median))+
-  geom_tile()+
-  scale_fill_stepsn(colors = pal, n.breaks = 11, 
-                    limits = c(-75, 15), show.limits = T)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, 
-          show.legend = F, linewidth = 0.25)+
-  geom_sf(inherit.aes = F, data = world)+
-  theme_bw()+
-  labs(title = "SSP5-8.5: 2045-2055")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(110, 240), y = c(-45, 25))
+  gg_base+
+  labs(title = "SSP5-8.5: 2045-2055")
 
 #SSP2-4.5 2085-2095 
-p80_245 <- maps_data |> 
+p80_245 <- int_bio |> 
   ggplot(aes(x, y, fill = rel_change_mean80_ssp245_median))+
-  geom_tile()+
-  scale_fill_stepsn(colors = pal, n.breaks = 11, 
-                    limits = c(-75, 15), show.limits = T)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA,
-          show.legend = F, linewidth = 0.25)+
-  geom_sf(inherit.aes = F, data = world)+
-  theme_bw()+
-  labs(title = "SSP2-4.5: 2085-2095")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(110, 240), y = c(-45, 25))
+  gg_base+
+  labs(title = "SSP2-4.5: 2085-2095")
 
 #SSP5-8.5 2085-2095 
-p80_585 <- maps_data |> 
+p80_585 <- int_bio |> 
   ggplot(aes(x, y, fill = rel_change_mean80_ssp585_median))+
-  geom_tile()+
-  scale_fill_stepsn(colors = pal, n.breaks = 11, 
-                    limits = c(-75, 15), show.limits = T)+
-  geom_sf(inherit.aes = F, data = picts, fill = NA, 
-          show.legend = F, linewidth = 0.25)+
-  geom_sf(inherit.aes = F, data = world)+
-  theme_bw()+
+  gg_base+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
   labs(title = "SSP5-8.5: 2085-2095")+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
         legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))+
-  lims(x = c(110, 240), y = c(-45, 25))
+        legend.key.height = unit(0.75, "cm"))
 
 #Get legend
 legend <- get_legend(p80_585)
@@ -394,10 +514,10 @@ all_plots <- plot_grid(title, plot_grid(p50_245, p50_585, ncol = 2, nrow = 1),
 all_plots
 ```
 
-![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ## Saving final plot
 
 ``` r
-ggsave("../Outputs/maps_perc_change_PICTs_40s-80s.pdf", device = "pdf", width = 14, height = 9)
+ggsave("../Outputs/maps_perc_change_PICTs_40s-80s_int.pdf", device = "pdf", width = 14, height = 9)
 ```
