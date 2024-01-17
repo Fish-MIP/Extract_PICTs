@@ -225,7 +225,7 @@ We will use a map of the world as a base map, and the EEZ boundaries of PICTs.
 sf_use_s2(F)
 
 #Base map
-world <- ne_countries(returnclass = "sf")
+world <- ne_countries(returnclass = "sf", scale = "large")
 
 #Split world in two hemispheres 
 west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -45, xmax = -120, ymax = 25)))

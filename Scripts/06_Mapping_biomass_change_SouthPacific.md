@@ -374,7 +374,7 @@ sf_use_s2(F)
 
 ``` r
 #Base map
-world <- ne_countries(returnclass = "sf")
+world <- ne_countries(returnclass = "sf", scale = "large")
 
 #Split world in two hemispheres 
 west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -45, xmax = -120, ymax = 25)))
@@ -400,12 +400,7 @@ east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -45, xmax = 180, ymax = 25)))
 #Merge them together
 oceancent <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
                               st_crs(east)), east)
-```
 
-    ## Warning: st_crs<- : replacing crs does not reproject data; use st_transform for
-    ## that
-
-``` r
 ## PICT EEZ boundaries
 picts <- read_sf("../Outputs/SouthPacific_EEZ-GBR.shp") |> 
   #Exclude Great Barrier Reef
