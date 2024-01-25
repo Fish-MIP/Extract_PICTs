@@ -377,7 +377,7 @@ sf_use_s2(F)
 world <- ne_countries(returnclass = "sf", scale = "large")
 
 #Split world in two hemispheres 
-west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -45, xmax = -120, ymax = 25)))
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -50, xmax = -120, ymax = 50)))
 ```
 
     ## although coordinates are longitude/latitude, st_intersection assumes that they
@@ -387,7 +387,7 @@ west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -45, xmax = -120, ymax = 25
     ## all geometries
 
 ``` r
-east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -45, xmax = 180, ymax = 25)))
+east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -50, xmax = 180, ymax = 50)))
 ```
 
     ## although coordinates are longitude/latitude, st_intersection assumes that they
@@ -456,7 +456,7 @@ gg_base <- list(geom_tile(),
                 theme(axis.title = element_blank(), 
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"),
-                lims(x = c(110, 240), y = c(-45, 25)))
+                lims(x = c(110, 240), y = c(-49, 25)))
 
 #SSP2-4.5 2045-2055 
 p50_245 <- int_bio |>
