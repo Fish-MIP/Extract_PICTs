@@ -24,8 +24,13 @@ library(tidyr)
 #Loading keys identifying EEZs
 PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |> 
   #Removing original ID - using simplified version
-  select(!MRGID)
-
+  select(!MRGID) |> 
+  #Remove duplicates
+  distinct() |> 
+  #Add region information
+  left_join(read_csv("../Data/PICT_regions.csv"), 
+            by = join_by("name"))
+  
 #Loading FishMIP biomass data
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")|>
   #Removing GBR data
@@ -91,41 +96,97 @@ head(bio_plots)
 ```
   
 ## Plotting data 
-We will remove the lowest emission scenario (`SSP1-2.6`) before plotting relative change in biomass.  
+We will remove the lowest emission scenario (`SSP1-2.6`) before plotting relative change in biomass. We will create three plots based on the three cultural regions found in this area: Melanesia, Micronesia, and Polynesia. All plots will follow the same format, so we will define a base plot and apply it to all regions.    
+  
+```{r}
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Horizontal line at 0 as reference for no change
+                geom_hline(yintercept = 0, color = "#709fcc", 
+                           linewidth = 0.65, linetype = 2),
+                #Vertical line showing reference between historical and future
+                #scenarios
+                geom_vline(xintercept = 2015, color = "#709fcc", 
+                           linewidth = 0.65),
+                #Add ribbon (min and max)
+                geom_ribbon(aes(ymin = rel_change_lower, ymax = rel_change_max, 
+                                fill = scenario), alpha = 0.3, color = NA),
+                #Change x scale to make it easier to identify years
+                scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
+                                   breaks = seq(1980, 2100, by = 40), 
+                                   limits = c(1980, 2100)),
+                #Make individual plots by PICT
+                facet_wrap(~name, scales = "free_y"),
+                #Change line colours 
+                scale_color_manual(values = c("historical" = "black", 
+                                              "SSP2-4.5" = "#33bbee", 
+                                              "SSP5-8.5" = "#ee3377")),
+                #Change ribbon colours
+                scale_fill_manual(values = c("historical" = "black", 
+                                             "SSP2-4.5" = "#33bbee", 
+                                             "SSP5-8.5" = "#ee3377")),
+                #Ensure legend has three rows
+                guides(color = guide_legend(ncol = 3, label.hjust = 0.5)),
+                #Apply pre-defined theme
+                theme_bw(),
+                #Final changes to make plot more appealing and easy to read
+                theme(legend.position = "top", 
+                      legend.key.size = unit(1., "cm"),
+                      panel.grid.minor.y = element_blank(),
+                      plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, 
+                                           unit = "cm"),
+                      legend.text = element_text(size = 12), 
+                      strip.text = element_text(size = 12), 
+                      axis.title.x = element_blank(),
+                      legend.title = element_blank(), 
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)),
+                #Chaning labels in y axis
+                ylab("% biomass change (reference period: 2010-2020)"))
+```
+  
+### Melanesia plot
   
 ```{r}
 bio_plots |> 
   #Removing lowest emission scenario
-  filter(str_detect(scenario, "2.6", negate = T)) |> 
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Melanesia") |> 
   ggplot(aes(x = year, y = rel_change_median, color = scenario))+
-  geom_line(linewidth = 0.5)+
-  geom_hline(yintercept = 1, color = "#709fcc", linewidth = 0.65, linetype = 2)+
-  geom_vline(xintercept = 2015, color = "#709fcc", linewidth = 0.65)+
-  geom_ribbon(aes(ymin = rel_change_lower, ymax = rel_change_max, fill = scenario),
-              alpha = 0.3, color = NA)+
-  scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
-                     breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
-  facet_wrap(~name, scales = "free_y")+
-  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
-                                "SSP5-8.5" = "#ee3377"))+
-  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
-                               "SSP5-8.5" = "#ee3377"))+
-  guides(color = guide_legend(nrow = 3))+
-  theme_bw()+
-  theme(legend.position = "bottom", legend.justification = "right", 
-        legend.key.size = unit(1., "cm"),
-        legend.box.spacing = unit(-3.5, "cm"), panel.grid.minor.y = element_blank(),
-        plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
-        legend.text = element_text(size = 13), axis.title.x = element_blank(),
-        legend.title = element_blank(), axis.title.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65))+
-  ylab("% biomass change (reference period: 2010-2020)")
-
+  base_gg
 ```
-  
-### Saving plots
-  
+    
 ```{r, eval = F}
-ggsave("../Outputs/relative_biomass_change.pdf", device = "pdf", width = 14, height = 9)
+ggsave("../Outputs/melanesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 6)
 ```
-
+  
+### Micronesia plot
+  
+```{r}
+bio_plots |> 
+  #Removing lowest emission scenario
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Micronesia") |> 
+  ggplot(aes(x = year, y = rel_change_median, color = scenario))+
+  base_gg
+```
+    
+```{r, eval = F}
+ggsave("../Outputs/micronesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 8)
+```
+  
+### Polynesia plot
+  
+```{r}
+bio_plots |> 
+  #Removing lowest emission scenario
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Polynesia") |> 
+  ggplot(aes(x = year, y = rel_change_median, color = scenario))+
+  base_gg
+```
+    
+```{r, eval = F}
+ggsave("../Outputs/polynesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 8)
+```
+  
