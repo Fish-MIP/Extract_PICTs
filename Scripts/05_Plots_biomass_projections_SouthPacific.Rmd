@@ -8,6 +8,15 @@ output:
     html_preview: false
 ---
 
+# Plotting percentage change in FishMIP biomass estimates
+The [Fisheries and Marine Ecosystem Model Intercomparison Project (FishMIP)](https://fish-mip.github.io/) includes global marine ecosystem models that vary in their complexity and the equations they used to capture relationships between the abiotic and biotic components of marine ecosystems. FishMIP provide estimates of biomass of a wide range of marine organisms, including fish and invertebrates, from 1965 to 2100. FishMIP models are forced by environmental data from two earth system models (ESM): GFDL-ESM4.1 and IPSL-CM6A-LR. The ESM inputs used come from the historical run (1965-2014) and two emissions scenarios: SSP1-2.6 (low emissions) and SSP5-8.5 (high emissions).  
+  
+Given that FishMIP models represent the marine environment differently, the biomass estimates provided by these models span three orders of magnitude. For this reason, instead of focusing on the absolute changes in biomass, we will report relative change in biomass from a reference period (2010-2020). To improve the accuracy in biomass predictions, we will calculate the median percentage change in fish biomass across all models. To provide an indication of uncertainty in our ensemble, we are providing minimum and maximum values of change across models.  
+  
+Given that FishMIP models do not provide estimates of biomass under an intermediate emissions scenario (SSP2-4.5), we calculated an estimate for this scenario by calculating the mean between SSP1-2.6 and SSP5-8.5 as explained in the [biomass projection notebook](https://github.com/Fish-MIP/Extract_PICTs/blob/main/Scripts/04_Biomass_projections_SouthPacific.md).  
+  
+Changes in fish biomass were calculated and reported for each PICT.  
+
 ## Loading libraries
     
 ```{r, message = F, warning = F}
@@ -63,7 +72,7 @@ bio_picts_ssp245 <- bio_picts |>
   
 ## Calculating mean for reference period
 Plots created here will show percentage change in biomass over time under two emissions scenarios rather than absolute values. Our reference period is between 2010 and 2020. From 2010 to 2014, biomass from the historical period will be used, and between 2015 and 2020 we will use `SSP1-2.6` data as this is the best case scenario.  
-
+  
 ```{r}
 #Calculating mean for reference decade (2010-2020)
 ref_decade <- bio_picts |>
