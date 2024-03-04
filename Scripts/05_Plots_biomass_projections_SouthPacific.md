@@ -3,16 +3,51 @@ Plotting biomass projections for PICTs
 Denisse Fierro Arcos
 2023-12-13
 
-- <a href="#loading-libraries" id="toc-loading-libraries">Loading
-  libraries</a>
-- <a href="#loading-biomass-data-from-fishmip-models"
-  id="toc-loading-biomass-data-from-fishmip-models">Loading biomass data
-  from FishMIP models</a>
-- <a href="#calculating-mean-for-reference-period"
-  id="toc-calculating-mean-for-reference-period">Calculating mean for
-  reference period</a>
-- <a href="#plotting-data" id="toc-plotting-data">Plotting data</a>
-  - <a href="#saving-plots" id="toc-saving-plots">Saving plots</a>
+- <a href="#plotting-percentage-change-in-fishmip-biomass-estimates"
+  id="toc-plotting-percentage-change-in-fishmip-biomass-estimates">Plotting
+  percentage change in FishMIP biomass estimates</a>
+  - <a href="#loading-libraries" id="toc-loading-libraries">Loading
+    libraries</a>
+  - <a href="#loading-biomass-data-from-fishmip-models"
+    id="toc-loading-biomass-data-from-fishmip-models">Loading biomass data
+    from FishMIP models</a>
+  - <a href="#calculating-mean-for-reference-period"
+    id="toc-calculating-mean-for-reference-period">Calculating mean for
+    reference period</a>
+  - <a href="#plotting-data" id="toc-plotting-data">Plotting data</a>
+    - <a href="#melanesia-plot" id="toc-melanesia-plot">Melanesia plot</a>
+    - <a href="#micronesia-plot" id="toc-micronesia-plot">Micronesia plot</a>
+    - <a href="#polynesia-plot" id="toc-polynesia-plot">Polynesia plot</a>
+
+# Plotting percentage change in FishMIP biomass estimates
+
+The [Fisheries and Marine Ecosystem Model Intercomparison Project
+(FishMIP)](https://fish-mip.github.io/) includes global marine ecosystem
+models that vary in their complexity and the equations they used to
+capture relationships between the abiotic and biotic components of
+marine ecosystems. FishMIP provide estimates of biomass of a wide range
+of marine organisms, including fish and invertebrates, from 1965 to
+2100. FishMIP models are forced by environmental data from two earth
+system models (ESM): GFDL-ESM4.1 and IPSL-CM6A-LR. The ESM inputs used
+come from the historical run (1965-2014) and two emissions scenarios:
+SSP1-2.6 (low emissions) and SSP5-8.5 (high emissions).
+
+Given that FishMIP models represent the marine environment differently,
+the biomass estimates provided by these models span three orders of
+magnitude. For this reason, instead of focusing on the absolute changes
+in biomass, we will report relative change in biomass from a reference
+period (2010-2020). To improve the accuracy in biomass predictions, we
+will calculate the median percentage change in fish biomass across all
+models. To provide an indication of uncertainty in our ensemble, we are
+providing minimum and maximum values of change across models.
+
+Given that FishMIP models do not provide estimates of biomass under an
+intermediate emissions scenario (SSP2-4.5), we calculated an estimate
+for this scenario by calculating the mean between SSP1-2.6 and SSP5-8.5
+as explained in the [biomass projection
+notebook](https://github.com/Fish-MIP/Extract_PICTs/blob/main/Scripts/04_Biomass_projections_SouthPacific.md).
+
+Changes in fish biomass were calculated and reported for each PICT.
 
 ## Loading libraries
 
@@ -30,7 +65,12 @@ library(tidyr)
 #Loading keys identifying EEZs
 PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |> 
   #Removing original ID - using simplified version
-  select(!MRGID)
+  select(!MRGID) |> 
+  #Remove duplicates
+  distinct() |> 
+  #Add region information
+  left_join(read_csv("../Data/PICT_regions.csv"), 
+            by = join_by("name"))
 ```
 
     ## Rows: 26 Columns: 3
@@ -38,6 +78,13 @@ PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |>
     ## Delimiter: ","
     ## chr (1): name
     ## dbl (2): ID, MRGID
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+    ## Rows: 24 Columns: 2
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (2): name, Region
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -124,12 +171,6 @@ bio_plots <- bio_picts_ssp245 |>
     ## `summarise()` has grouped output by 'mask', 'scenario'. You can override using
     ## the `.groups` argument.
 
-    ## Warning in left_join(ungroup(summarise(group_by(mutate(left_join(bio_picts_ssp245, : Detected an unexpected many-to-many relationship between `x` and `y`.
-    ## ℹ Row 2017 of `x` matches multiple rows in `y`.
-    ## ℹ Row 26 of `y` matches multiple rows in `x`.
-    ## ℹ If a many-to-many relationship is expected, set `relationship =
-    ##   "many-to-many"` to silence this warning.
-
 ``` r
 #Saving results
 bio_plots |> 
@@ -139,7 +180,7 @@ bio_plots |>
 head(bio_plots)
 ```
 
-    ## # A tibble: 6 × 7
+    ## # A tibble: 6 × 8
     ##    mask scenario  year rel_change_lower rel_change_median rel_change_max name   
     ##   <dbl> <chr>    <dbl>            <dbl>             <dbl>          <dbl> <chr>  
     ## 1  8312 SSP1-2.6  2015           -12.3             -2.20            3.82 New Ca…
@@ -148,45 +189,110 @@ head(bio_plots)
     ## 4  8312 SSP1-2.6  2018            -8.56             2.25           21.3  New Ca…
     ## 5  8312 SSP1-2.6  2019            -1.59             3.31           21.1  New Ca…
     ## 6  8312 SSP1-2.6  2020            -4.33             1.04            6.84 New Ca…
+    ## # ℹ 1 more variable: Region <chr>
 
 ## Plotting data
 
 We will remove the lowest emission scenario (`SSP1-2.6`) before plotting
-relative change in biomass.
+relative change in biomass. We will create three plots based on the
+three cultural regions found in this area: Melanesia, Micronesia, and
+Polynesia. All plots will follow the same format, so we will define a
+base plot and apply it to all regions.
+
+``` r
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Horizontal line at 0 as reference for no change
+                geom_hline(yintercept = 0, color = "#709fcc", 
+                           linewidth = 0.65, linetype = 2),
+                #Vertical line showing reference between historical and future
+                #scenarios
+                geom_vline(xintercept = 2015, color = "#709fcc", 
+                           linewidth = 0.65),
+                #Add ribbon (min and max)
+                geom_ribbon(aes(ymin = rel_change_lower, ymax = rel_change_max, 
+                                fill = scenario), alpha = 0.3, color = NA),
+                #Change x scale to make it easier to identify years
+                scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
+                                   breaks = seq(1980, 2100, by = 40), 
+                                   limits = c(1980, 2100)),
+                #Make individual plots by PICT
+                facet_wrap(~name, scales = "free_y"),
+                #Change line colours 
+                scale_color_manual(values = c("historical" = "black", 
+                                              "SSP2-4.5" = "#33bbee", 
+                                              "SSP5-8.5" = "#ee3377")),
+                #Change ribbon colours
+                scale_fill_manual(values = c("historical" = "black", 
+                                             "SSP2-4.5" = "#33bbee", 
+                                             "SSP5-8.5" = "#ee3377")),
+                #Ensure legend has three rows
+                guides(color = guide_legend(ncol = 3, label.hjust = 0.5)),
+                #Apply pre-defined theme
+                theme_bw(),
+                #Final changes to make plot more appealing and easy to read
+                theme(legend.position = "top", 
+                      legend.key.size = unit(1., "cm"),
+                      panel.grid.minor.y = element_blank(),
+                      plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, 
+                                           unit = "cm"),
+                      legend.text = element_text(size = 12), 
+                      strip.text = element_text(size = 12), 
+                      axis.title.x = element_blank(),
+                      legend.title = element_blank(), 
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)),
+                #Chaning labels in y axis
+                ylab("% biomass change (reference period: 2010-2020)"))
+```
+
+### Melanesia plot
 
 ``` r
 bio_plots |> 
   #Removing lowest emission scenario
-  filter(str_detect(scenario, "2.6", negate = T)) |> 
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Melanesia") |> 
   ggplot(aes(x = year, y = rel_change_median, color = scenario))+
-  geom_line(linewidth = 0.5)+
-  geom_hline(yintercept = 1, color = "#709fcc", linewidth = 0.65, linetype = 2)+
-  geom_vline(xintercept = 2015, color = "#709fcc", linewidth = 0.65)+
-  geom_ribbon(aes(ymin = rel_change_lower, ymax = rel_change_max, fill = scenario),
-              alpha = 0.3, color = NA)+
-  scale_x_continuous(minor_breaks = seq(1980, 2100, by = 10),
-                     breaks = seq(1980, 2100, by = 40), limits = c(1980, 2100))+
-  facet_wrap(~name, scales = "free_y")+
-  scale_color_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
-                                "SSP5-8.5" = "#ee3377"))+
-  scale_fill_manual(values = c("historical" = "black", "SSP2-4.5" = "#33bbee", 
-                               "SSP5-8.5" = "#ee3377"))+
-  guides(color = guide_legend(nrow = 3))+
-  theme_bw()+
-  theme(legend.position = "bottom", legend.justification = "right", 
-        legend.key.size = unit(1., "cm"),
-        legend.box.spacing = unit(-3.5, "cm"), panel.grid.minor.y = element_blank(),
-        plot.margin = margin(b = 1.15, r = 0.5, l = 0.5, t = 0.2, unit = "cm"),
-        legend.text = element_text(size = 13), axis.title.x = element_blank(),
-        legend.title = element_blank(), axis.title.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65))+
-  ylab("% biomass change (reference period: 2010-2020)")
+  base_gg
 ```
 
-![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
-
-### Saving plots
+![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
-ggsave("../Outputs/relative_biomass_change.pdf", device = "pdf", width = 14, height = 9)
+ggsave("../Outputs/melanesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 6)
+```
+
+### Micronesia plot
+
+``` r
+bio_plots |> 
+  #Removing lowest emission scenario
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Micronesia") |> 
+  ggplot(aes(x = year, y = rel_change_median, color = scenario))+
+  base_gg
+```
+
+![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+``` r
+ggsave("../Outputs/micronesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 8)
+```
+
+### Polynesia plot
+
+``` r
+bio_plots |> 
+  #Removing lowest emission scenario
+  filter(str_detect(scenario, "2.6", negate = T) & Region == "Polynesia") |> 
+  ggplot(aes(x = year, y = rel_change_median, color = scenario))+
+  base_gg
+```
+
+![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+ggsave("../Outputs/polynesia_relative_biomass_change.pdf", device = "pdf", 
+       width = 12, height = 8)
 ```

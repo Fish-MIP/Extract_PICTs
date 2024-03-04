@@ -5,8 +5,8 @@ Beth Fulton and Denisse Fierro Arcos
 2023-11-29
 
 - <a
-  href="#generating-biomass-projections-for-pacific-islands-countries-and-territories-picts"
-  id="toc-generating-biomass-projections-for-pacific-islands-countries-and-territories-picts">Generating
+  href="#marine-biomass-projections-for-pacific-islands-countries-and-territories-picts"
+  id="toc-marine-biomass-projections-for-pacific-islands-countries-and-territories-picts">Marine
   biomass projections for Pacific Islands Countries and Territories
   (PICTs)</a>
   - <a href="#loading-relevant-libraries"
@@ -14,51 +14,51 @@ Beth Fulton and Denisse Fierro Arcos
   - <a href="#models-used-to-generate-biomass-projections-for-picts"
     id="toc-models-used-to-generate-biomass-projections-for-picts">Models
     used to generate biomass projections for PICTs</a>
-  - <a href="#1-biomass-projections-from-reefmod-data"
-    id="toc-1-biomass-projections-from-reefmod-data">1. Biomass projections
-    from REEFMOD data</a>
-    - <a href="#relationships-between-coral-cover-and-fish-biomass"
-      id="toc-relationships-between-coral-cover-and-fish-biomass">Relationships
-      between coral cover and fish biomass</a>
-  - <a href="#2-loading-biomass-estimates-from-fishmip-models"
-    id="toc-2-loading-biomass-estimates-from-fishmip-models">2. Loading
-    biomass estimates from FishMIP models</a>
-  - <a href="#3-estimating-biases-from-gbr-data"
-    id="toc-3-estimating-biases-from-gbr-data">3. Estimating biases from GBR
-    data</a>
-    - <a href="#extracting-gbr-data-and-calculating-descriptive-statistics"
-      id="toc-extracting-gbr-data-and-calculating-descriptive-statistics">Extracting
-      GBR data and calculating descriptive statistics</a>
-    - <a href="#comparing-ensemble-means-to-reefmod-biomass-estimates"
-      id="toc-comparing-ensemble-means-to-reefmod-biomass-estimates">Comparing
-      ensemble means to REEFMOD biomass estimates</a>
-  - <a
-    href="#4-bias-corrected-biomass-projections-calculated-from-fishmip-ensemble"
-    id="toc-4-bias-corrected-biomass-projections-calculated-from-fishmip-ensemble">4.
-    Bias corrected biomass projections calculated from FishMIP ensemble</a>
+  - <a href="#calculating-bias-correction-for-fishmip-biomass-data"
+    id="toc-calculating-bias-correction-for-fishmip-biomass-data">Calculating
+    bias correction for FishMIP biomass data</a>
+    - <a href="#1-calculating-fish-biomass-from-reefmod-coral-cover-data"
+      id="toc-1-calculating-fish-biomass-from-reefmod-coral-cover-data">1.
+      Calculating fish biomass from REEFMOD coral cover data</a>
+    - <a
+      href="#2-calculating-annual-mean-biomass-estimates-from-fishmip-models"
+      id="toc-2-calculating-annual-mean-biomass-estimates-from-fishmip-models">2.
+      Calculating annual mean biomass estimates from FishMIP models</a>
+    - <a href="#3-estimating-biases-in-annual-fishmip-biomass-estimates"
+      id="toc-3-estimating-biases-in-annual-fishmip-biomass-estimates">3.
+      Estimating biases in annual FishMIP biomass estimates</a>
     - <a href="#plotting-corrected-biomass-for-a-single-picts"
       id="toc-plotting-corrected-biomass-for-a-single-picts">Plotting
       corrected biomass for a single PICTs</a>
-  - <a href="#5-calculating-biomass-estimates-under-scenario-ssp2-45"
-    id="toc-5-calculating-biomass-estimates-under-scenario-ssp2-45">5.
-    Calculating biomass estimates under scenario <code>SSP2-4.5</code></a>
+- <a href="#calculating-biomass-estimates-under-scenario-ssp2-45"
+  id="toc-calculating-biomass-estimates-under-scenario-ssp2-45">Calculating
+  biomass estimates under scenario <code>SSP2-4.5</code></a>
 
-# Generating biomass projections for Pacific Islands Countries and Territories (PICTs)
+# Marine biomass projections for Pacific Islands Countries and Territories (PICTs)
 
 The workflow described in this notebook was developed by [Dr Beth
 Fulton](https://orcid.org/0000-0002-5904-7917) (CSIRO) and implemented
-in `R` by [Denisse Fierro Arcos](https://github.com/lidefi87/). The text
-describing the methods was largely written by Dr Fulton with minor edits
-by Denisse.
+in `R` by [Denisse Fierro Arcos](https://github.com/lidefi87/).
 
-This notebook implements in `R` the workflow designed to generate
-demersal fish (and invertebrate) biomass projections for the Pacific
-Islands Countries and Territories (PICTs) to the year 2100. This
-workflow uses relationships observed in coral reefs between coral cover
-and fish biomass, as well as projections of coral cover in the Great
-Barrier Reef and fish biomass in the Pacific from the [Fisheries and
-Marine Ecosystem Model Intercomparison Project
-(FishMIP)](https://fish-mip.github.io/).
+The [Fisheries and Marine Ecosystem Model Intercomparison Project
+(FishMIP)](https://fish-mip.github.io/) includes global marine ecosystem
+models that vary in their complexity and the equations they used to
+capture relationships between the abiotic and biotic components of
+marine ecosystems. FishMIP provide estimates of biomass of a wide range
+of marine organisms, including fish and invertebrates, from 1965 to
+2100. FishMIP models are forced by environmental data from two earth
+system models (ESM): GFDL-ESM4.1 and IPSL-CM6A-LR. The ESM inputs used
+come from the historical run (1965-2014) and two emissions scenarios:
+SSP1-2.6 (low emissions) and SSP5-8.5 (high emissions).
+
+These FishMIP models are global in scope, and so they may not truly
+capture the relationships between coral cover and fish biomass. In this
+notebook, we will improve FishMIP biomass projections by taking into
+account the effect of coral via a bias correction, which is explained in
+detailed in the sections below.
+
+Finally, we will calculate an ensemble mean using the corrected fish
+biomass values from all available FishMIP models.
 
 ## Loading relevant libraries
 
@@ -70,8 +70,9 @@ library(janitor)
 
 ## Models used to generate biomass projections for PICTs
 
-To generate biomass projections for PICTs, we used biomass estimates
-produced by six different fisheries models:  
+A brief description of the six FishMIP models used in our ensemble is
+included below, and you can click on the links to find out more
+information about each model.  
 1. [APECOSM](https://apecosm.org/): Apex Predators ECOSystem Model,
 which represents the spatialized dynamics of open ocean pelagic
 ecosystems in the global ocean.  
@@ -97,17 +98,21 @@ functional groups (heterotrophic flagellates and ciliates, omnivorous
 and carnivorous copepods, larvaceans, euphausiids, salps, chaetognaths
 and jellyfish) and three size-based fish groups.
 
-## 1. Biomass projections from REEFMOD data
+## Calculating bias correction for FishMIP biomass data
 
-A relationship between coral cover and fish biomass has been established
-in the literature. A quick synthesis of existing relationships can be
-found in the document `Relationships for fish biomass model.docx`.
+Bias corrections were derived from REEFMOD data, which describes the
+relationship between coral cover and fish biomass in the Great Barrier
+Reef (GBR).
 
-### Relationships between coral cover and fish biomass
+### 1. Calculating fish biomass from REEFMOD coral cover data
 
-The most useful relationships came from the [Graham and Nash
-(2013)](https://doi.org/10.1007/s00338-012-0984-y) data set (explored in
-`graham_nash_2012_dataset.xlsx`). Using the raw data gives the following
+A quick synthesis of existing relationships can be found in the document
+`Relationships for fish biomass model.docx`. The most useful
+relationships between coral cover and fish biomass come from the [Graham
+and Nash (2013)](https://doi.org/10.1007/s00338-012-0984-y) data set
+(explored in `graham_nash_2012_dataset.xlsx`).
+
+Using the raw data from REEFMOD, we obtained the following
 relationships:
 
 **Equation 1**: Structural complexity as a function of coral cover.
@@ -150,8 +155,9 @@ poorer fit, so using a quadratic on the argument that once a reef
 habitat is too complex, it loses places for fish to sit.  
 $fish_{biomass} = -2294.6 \times {struct_{complexity}}^2 + 8961.1 \times struct_{complexity} - 6843.6$
 
-In this step, we will also convert fish biomass from $kg \times ha^{-1}$
-to $g \times m^{-2}$, so it matches the outputs of FishMIP models.
+In this step, we will also convert REEFMOD fish biomass from
+$kg \times ha^{-1}$ to $g \times m^{-2}$, so it matches the outputs of
+FishMIP models.
 
 ``` r
 #Calculating fish biomass
@@ -188,7 +194,7 @@ $fish_{biomass} = 13.56 \times coral_{cover} + 732.15$
 $fish_{biomass} = 14.285 \times coral_{cover} + 1325.7$
 
 ``` r
-#Calculating REEFMOD biomass values
+#Calculating REEFMOD biomass values (in g/m2)
 coral <- coral |> 
   #lower biomass bound
   mutate(reefmod_lower_biomass = (12.716*coral_cover+146.75)*1000/10000,
@@ -214,18 +220,19 @@ head(coral)
     ## # ℹ 2 more variables: reefmod_median_biomass <dbl>, reefmod_upper_biomass <dbl>
 
 Note that the REEFMOD team predicted mean coral coverage from 2024 to
-2100 for the Great Barrier Reef (GBR) under five emissions scenarios:
-`SSP1-1.9`, `SSP1-2.6`, `SSP2-4.5`, `SSP3-7.0`, and `SSP5-8.5`. The
-above calculations were applied to these five projections.
+2100 (`year` column) for the Great Barrier Reef (GBR) under five
+emissions scenarios: `SSP1-1.9`, `SSP1-2.6`, `SSP2-4.5`, `SSP3-7.0`, and
+`SSP5-8.5` (`scenario` column). Fish biomass was calculated for the
+entire period (2024-2100) and for all five projections.
 
-## 2. Loading biomass estimates from FishMIP models
+### 2. Calculating annual mean biomass estimates from FishMIP models
 
-Global monthly biomass estimates for the historical period (1985-2014)
-and two emissions scenarios `SSP1-2.6` and `SSP5-8.5` covering the
-period between 2015 and 2100 were obtained from [six (6) FishMIP
+Here, we used the monthly biomass estimates for the historical period
+(1985-2014) and two emissions scenarios `SSP1-2.6` and `SSP5-8.5`
+(2015-2100) from [six (6) FishMIP global
 models](#fish-mip-models-used-to-generate-biomass-projections-for-picts)
-forced by both GFDL and IPSL general circulation models. Annual time
-series per PICT were calculated for each of the FishMIP models.
+to calculate mean annual biomass estimates for each FishMIP model. We
+used annual mean values to match the data available from REEFMOD.
 
 **Note:** To run the code below, you will need access to the monthly
 biomass estimates available in the FishMIP server. If you do not have
@@ -271,9 +278,9 @@ bio_picts |>
 head(bio_picts)
 ```
 
-If you do not have access to the monthly biomass estimates in the
-FishMIP server, you can load the annual means we calculated in the step
-above and continue to run all other code chunks in this notebook.
+**NOTE:** If you do not have access to the monthly biomass estimates in
+the FishMIP server, you can load the annual means we calculated in the
+step above and continue to run all other code chunks in this notebook.
 
 ``` r
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
@@ -288,18 +295,20 @@ bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
-## 3. Estimating biases from GBR data
+### 3. Estimating biases in annual FishMIP biomass estimates
 
-For scenarios `SSP1-2.6` and `SSP5-8.5`, we will compare the biomass
-estimates calculated from REEFMOD data (step 1) and the FishMIP model
-ensemble for the GBR only (step 2 above). We will divide the ensemble
-mean by the biomass estimates obtained from equation 2 (`fish_biomass`
-column in `coral` data frame), and by the median, upper, lower bounds
-obtained from REEFMOD data (equations 3 to 5 stored in the `coral` data
-frame). These calculations will help us estimate the bias of the FishMIP
-global model ensemble.
+REEFMOD provides annual biomass estimates for the GBR, so we will
+compare these estimates to the annual FishMIP estimates for the GBR only
+(step 2 above). Note that since FishMIP models only include estimates
+for two emission scenarios: `SSP1-2.6` and `SSP5-8.5`, we will exclude
+all other scenarios from these comparisons.
 
-### Extracting GBR data and calculating descriptive statistics
+#### Extracting GBR data from FishMIP models
+
+As mentioned above, we will only use GBR biomass estimates from all
+FishMIP models to perform comparisons. We will then calculate ensemble
+minimum, mean, and maximum to calculate bias in FishMIP biomass
+estimates.
 
 ``` r
 #Calculating ensemble statistics for GBR only
@@ -336,9 +345,17 @@ head(gbr_bio)
     ## 5 SSP1-2.6  2019             0.630             5.10              13.8
     ## 6 SSP1-2.6  2020             0.637             5.37              14.6
 
-### Comparing ensemble means to REEFMOD biomass estimates
+#### Comparing FishMIP ensemble estimates to REEFMOD biomass estimates
 
-This will give us a bias correction for the model ensemble.
+To estimate the bias in FishMIP biomass estimates, we will divide the
+mean ensemble estimates for the GBR (FishMIP data) by the biomass
+estimates obtained from equation 2 (`fish_biomass` column in `coral`
+data frame).
+
+We will also obtain bias estimates and by dividing FishMIP ensemble
+values (minimum, mean and maximum) by the median, upper, lower biomass
+estimates obtained from the REEFMOD data (equations 3 to 5 stored in the
+`coral` data frame).
 
 ``` r
 fishmip_biases <- gbr_bio |> 
@@ -371,15 +388,17 @@ head(fishmip_biases)
     ## #   mean_bias_fish_bio_fishmip <dbl>, lower_bias_reefmod_fishmip <dbl>,
     ## #   mean_bias_reefmod_fishmip <dbl>, upper_bias_reefmod_fishmip <dbl>
 
-## 4. Bias corrected biomass projections calculated from FishMIP ensemble
+After these calculations, we have FishMIP bias estimates per year
+(2024-2100) and for each scenario (SSP1-2.6 and SSP5-8.5). In the next
+step, we will calculate a mean estimate of bias per scenario before
+applying this value as a correction for FishMIP biomass estimates.
 
-The bias estimates obtained in step 3 above will be used to estimate a
-corrected mean ensemble biomass values for each PICT under two emission
-scenarios: `SSP1-2.6` and `SSP5-8.5`.
+#### 4. Correcting FishMIP ensemble mean estimates of fish biomass
 
-However, the bias corrections will not be applied per year. Instead, for
-each scenarios, we will use bias estimates to calculate the following:
-minimum, mean, median, and maximum.
+As explained in the previous step, we will not apply a bias correction
+that varies every year. Instead, for each scenario, we will calculate
+the minimum, mean, median, and maximum bias estimate. We will use these
+biases as corrections.
 
     ## # A tibble: 6 × 6
     ##   scenario stat   mean_bias_fish_bio_fishmip lower_bias_reefmod_fishmip
@@ -393,11 +412,9 @@ minimum, mean, median, and maximum.
     ## # ℹ 2 more variables: mean_bias_reefmod_fishmip <dbl>,
     ## #   upper_bias_reefmod_fishmip <dbl>
 
-Next, we exclude biomass values from the GBR (i.e., where `mask` = 9999)
-from the biomass corrections. This is because we are using GBR data to
-calculate corrections. As mentioned above, we will calculate the
-minimum, mean and maximum biomass values using all FishMIP models
-available for each PICTs under two scenarios.
+Bias corrections will be applied to ensemble data, so we will calculate
+the minimum, mean and maximum biomass estimates per PICT across all
+FishMIP models.
 
 ``` r
 ensemble_bio <- bio_picts |>
@@ -441,13 +458,17 @@ head(ensemble_bio)
     ## 5  8312 SSP1-2.6  2016 mean            4.70 
     ## 6  8312 SSP1-2.6  2016 max             8.27
 
-Note that the mean bias values for scenario `SSP1-2.6` calculated in
-step 3 will be used to calculated the corrected biomass for the
-historical period and the two emissions scenarios. Otherwise, if bias
-values from `SSP5-8.5` are used, the historical biomass values become
-too divergent.
+REEFMOD includes data from 2024 onwards, but FishMIP data is available
+from 1985. This means that we do not have bias estimates before 2024, so
+we will use the mean bias for scenario `SSP1-2.6` to correct fish
+estimates for the historical period (1985-2014) and the first eight
+years (2015-2023) of the two emissions scenarios (SSP1-2.6 and
+SSP5-8.5). We chose to use the mean bias of the low emissions scenario
+because if mean bias from `SSP5-8.5` was used, the historical biomass
+values became too divergent.
 
-The corrected biomass will be calculated using this formula:
+Finally, we produced corrected biomass from the FishMIP ensemble by
+applying this formula:
 $biomass_{est} = ensemble_{biomass} \times bias_{correction}$.
 
 ``` r
@@ -472,6 +493,8 @@ bias_corr_biomass <- ensemble_bio |>
 
 #Saving outputs
 bias_corr_biomass |> 
+  #Adding units for corrected biomass values
+  mutate(biomass_units = "g/m2") |> 
   write_csv("../Outputs/yearly_corrected_biomass_picts_1985-2100.csv")
 
 #Checking result
@@ -510,7 +533,7 @@ bias_corr_biomass |>
 
 ![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-## 5. Calculating biomass estimates under scenario `SSP2-4.5`
+# Calculating biomass estimates under scenario `SSP2-4.5`
 
 FishMIP models provide biomass estimates under a low emissions
 (`SSP1-2.6`) and a high emissions (`SSP5-8.5`) scenarios. None of them
