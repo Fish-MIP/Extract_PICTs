@@ -3,21 +3,17 @@ Plotting biomass projections for PICTs
 Denisse Fierro Arcos
 2023-12-13
 
-- <a href="#plotting-percentage-change-in-fishmip-biomass-estimates"
-  id="toc-plotting-percentage-change-in-fishmip-biomass-estimates">Plotting
-  percentage change in FishMIP biomass estimates</a>
-  - <a href="#loading-libraries" id="toc-loading-libraries">Loading
-    libraries</a>
-  - <a href="#loading-biomass-data-from-fishmip-models"
-    id="toc-loading-biomass-data-from-fishmip-models">Loading biomass data
-    from FishMIP models</a>
-  - <a href="#calculating-mean-for-reference-period"
-    id="toc-calculating-mean-for-reference-period">Calculating mean for
-    reference period</a>
-  - <a href="#plotting-data" id="toc-plotting-data">Plotting data</a>
-    - <a href="#melanesia-plot" id="toc-melanesia-plot">Melanesia plot</a>
-    - <a href="#micronesia-plot" id="toc-micronesia-plot">Micronesia plot</a>
-    - <a href="#polynesia-plot" id="toc-polynesia-plot">Polynesia plot</a>
+- [Plotting percentage change in FishMIP biomass
+  estimates](#plotting-percentage-change-in-fishmip-biomass-estimates)
+  - [Loading libraries](#loading-libraries)
+  - [Loading biomass data from FishMIP
+    models](#loading-biomass-data-from-fishmip-models)
+  - [Calculating mean for reference
+    period](#calculating-mean-for-reference-period)
+  - [Plotting data](#plotting-data)
+    - [Melanesia plot](#melanesia-plot)
+    - [Micronesia plot](#micronesia-plot)
+    - [Polynesia plot](#polynesia-plot)
 
 # Plotting percentage change in FishMIP biomass estimates
 
@@ -70,7 +66,12 @@ PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |>
   distinct() |> 
   #Add region information
   left_join(read_csv("../Data/PICT_regions.csv"), 
-            by = join_by("name"))
+            by = join_by("name")) |> 
+  mutate(name = case_when(str_detect(name, "FSM") ~ 
+                            "Federated States of Micronesia",
+                          name == "Pitcairn" ~ "Pitcairn Islands",
+                          T ~ name),
+         name = str_replace(name, "Group", "Islands"))
 ```
 
     ## Rows: 26 Columns: 3

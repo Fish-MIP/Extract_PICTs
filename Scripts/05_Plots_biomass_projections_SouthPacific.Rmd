@@ -38,7 +38,12 @@ PICTS_keys <- read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv") |>
   distinct() |> 
   #Add region information
   left_join(read_csv("../Data/PICT_regions.csv"), 
-            by = join_by("name"))
+            by = join_by("name")) |> 
+  mutate(name = case_when(str_detect(name, "FSM") ~ 
+                            "Federated States of Micronesia",
+                          name == "Pitcairn" ~ "Pitcairn Islands",
+                          T ~ name),
+         name = str_replace(name, "Group", "Islands"))
   
 #Loading FishMIP biomass data
 bio_picts <- read_csv("../Outputs/average_yearly_means_picts_1985-2100.csv")|>
