@@ -257,7 +257,7 @@ bio_plots |>
   base_gg
 ```
 
-![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](Figures/05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
 ggsave("../Outputs/melanesia_relative_biomass_change.pdf", device = "pdf", 
@@ -274,7 +274,7 @@ bio_plots |>
   base_gg
 ```
 
-![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](Figures/05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 ggsave("../Outputs/micronesia_relative_biomass_change.pdf", device = "pdf", 
@@ -291,7 +291,7 @@ bio_plots |>
   base_gg
 ```
 
-![](05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](Figures/05_Plots_biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ``` r
 ggsave("../Outputs/polynesia_relative_biomass_change.pdf", device = "pdf", 

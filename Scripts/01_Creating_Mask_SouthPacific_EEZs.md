@@ -184,7 +184,7 @@ eez_SP %>%
   lims(y = c(-40, 30))
 ```
 
-![](01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](Figures/01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 All the EEZs are located within our area of interest, the South Pacific,
 we can now save the results.
@@ -386,7 +386,7 @@ gbr_eez_SP %>%
   lims(y = c(-40, 30))
 ```
 
-![](01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](Figures/01_Creating_Mask_SouthPacific_EEZs_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 The map now looks as we expected, so we can save the results into memory
 for using in mapping.

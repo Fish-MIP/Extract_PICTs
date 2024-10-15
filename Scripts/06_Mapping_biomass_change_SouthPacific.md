@@ -291,7 +291,7 @@ ggplot()+
   geom_sf(data = locs, colour = "pink", alpha = 0.2)
 ```
 
-![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](Figures/06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 Now we have everything we need to perform the interpolation. We will
 loop through the four columns that need to be interpolated.
@@ -509,7 +509,7 @@ all_plots <- plot_grid(title, plot_grid(p50_245, p50_585, ncol = 2, nrow = 1),
 all_plots
 ```
 
-![](06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](Figures/06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ## Saving final plot
 

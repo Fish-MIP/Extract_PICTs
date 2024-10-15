@@ -531,7 +531,7 @@ bias_corr_biomass |>
   theme(axis.title.x = element_blank(), legend.title = element_blank())
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 # Calculating biomass estimates under scenario `SSP2-4.5`
 
@@ -562,7 +562,7 @@ p1 <- coral |>
 p1
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 We will now calculate the mean biomass estimated under of scenarios
 `SSP1-2.6` and `SSP5-8.5`. We will add this to our figure as a black
@@ -586,7 +586,7 @@ p1+
   geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_scenarios))
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 The averaged coral cover (black line) is closer to coral cover under
 scenario `SSP2-4.5` (green dashed line) than either of the two
@@ -643,7 +643,7 @@ biomass_ssp245 |>
   theme_bw()
 ```
 
-![](04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 It should be noted that we attempted to apply corrections to the
 projected biomass estimates. However, results appeared to be unlikely
