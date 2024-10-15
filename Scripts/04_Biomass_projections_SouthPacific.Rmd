@@ -112,7 +112,9 @@ Here, we used the monthly biomass estimates for the historical period (1985-2014
   
 ```{r, eval = F}
 #Folder containing outputs from FishMIP models
-base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
+base_folder <- file.path("/rd/gem/private/users/camillan/Extract_tcblog10_Data",
+                         "Output/sumSize_annual/sizeConsidered10g_10kg",
+                         "EEZsummaries/gridded_outputs")
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
@@ -217,9 +219,11 @@ mean_biases <- fishmip_biases |>
                    #Setting column names
                    .names = "{.col}-{.fn}")) |> 
   #Restructuring data frame to ease corrected biomass calculations
-  pivot_longer(!scenario, names_to = "bias_type", values_to = "bias_estimate") |> 
+  pivot_longer(!scenario, names_to = "bias_type", 
+               values_to = "bias_estimate") |> 
   #Separating bias type from statistic calculated
-  separate_wider_delim(cols = "bias_type", delim = "-", names = c("bias_type", "stat")) |> 
+  separate_wider_delim(cols = "bias_type", delim = "-", 
+                       names = c("bias_type", "stat")) |> 
   pivot_wider(names_from = bias_type, values_from = bias_estimate)
 
 #Checking result
@@ -245,9 +249,11 @@ ensemble_bio <- bio_picts |>
                    #Setting column names
                    .names = "{.col}-{.fn}")) |> 
   #Restructuring data frame to ease corrected biomass calculations
-  pivot_longer(!c(mask:year), names_to = "ensemble_type", values_to = "ensemble_bio") |> 
+  pivot_longer(!c(mask:year), names_to = "ensemble_type", 
+               values_to = "ensemble_bio") |> 
   #Separating bias type from statistic calculated
-  separate_wider_delim(cols = "ensemble_type", delim = "-", names = c("ensemble_type", "stat")) |> 
+  separate_wider_delim(cols = "ensemble_type", delim = "-", 
+                       names = c("ensemble_type", "stat")) |> 
   pivot_wider(names_from = ensemble_type, values_from = ensemble_bio)
 
 #Checking results
@@ -314,7 +320,8 @@ p1 <- coral |>
   #Selecting three relevant scenarios
   filter(str_detect(scenario, "2.6|4.5|8.5")) |> 
   #Plot coral cover for all scenarios
-  ggplot(aes(x = year, y = coral_cover, colour = scenario, linetype = scenario))+
+  ggplot(aes(x = year, y = coral_cover, colour = scenario, 
+             linetype = scenario))+
   geom_line()+
   theme_bw()+
   labs(y = "Coral cover (%)")+
@@ -340,7 +347,8 @@ mean_26_85 <- coral |>
   ungroup()
 
 p1+
-  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_scenarios))
+  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year,
+                                                    y = mean_scenarios))
 ```
   
 The averaged coral cover (black line) is closer to coral cover under scenario `SSP2-4.5` (green dashed line) than either of the two scenarios. This approach is simple, but note that before 2060, it tends to underestimate coral cover. However, after 2060 coral cover is overestimated. We expect similar biases when calculating fish biomass under the moderate emissions scenario.  
@@ -380,7 +388,8 @@ biomass_ssp245 |>
   #We will only plot the median values
   select(mask, year, ends_with("median")) |> 
   #Reformat data to make plotting easier
-  pivot_longer(ends_with("median"), names_to = "scenario", values_to = "biomass") |> 
+  pivot_longer(ends_with("median"), names_to = "scenario", 
+               values_to = "biomass") |> 
   #Plotting
   ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
   geom_line()+
