@@ -121,10 +121,9 @@ $struct_{complexity} = 3e^{-7} \times {coral_{cover}}^4 - 5e^{-5} \times {coral_
 
 ``` r
 #Base spreadsheet
-working_data <- "../Analysis/Excel Sheets/bias_correction_calculations_mean_coral_cover_all_climate_scenarios.xlsx"
-
-#Loading coral cover data
-coral <- read.xlsx(working_data, sheet = 1)
+coral <- file.path("../Analysis/Excel Sheets",
+                   "bias_correction_calculations_mean_coral_cover_all_climate_scenarios.xlsx") |> 
+  read.xlsx(sheet = 1)
 
 #Calculating structural complexity using equation 1 above
 coral <- coral |> 
@@ -133,7 +132,8 @@ coral <- coral |>
   #make names small case
   clean_names() |> 
   #calculate structural complexity
-  mutate(struct_complex = (3e-7*(coral_cover^4))-((5e-5)*(coral_cover^3))+(0.0022*(coral_cover^2))+1.3892)
+  mutate(struct_complex = (3e-7*(coral_cover^4))-((5e-5)*(coral_cover^3))+
+           (0.0022*(coral_cover^2))+1.3892)
 
 #Checking results
 head(coral)
@@ -162,7 +162,8 @@ FishMIP models.
 ``` r
 #Calculating fish biomass
 coral <- coral |> 
-  mutate(fish_biomass_kg_ha = (-2294.6*(struct_complex^2))+(8961.1*struct_complex)-6843.6) |> 
+  mutate(fish_biomass_kg_ha = (-2294.6*(struct_complex^2))+
+           (8961.1*struct_complex)-6843.6) |> 
   mutate(fish_biomass = fish_biomass_kg_ha*1000/10000)
 
 #Checking results
@@ -241,7 +242,9 @@ chunk.
 
 ``` r
 #Folder containing outputs from FishMIP models
-base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
+base_folder <- file.path("/rd/gem/private/users/camillan/Extract_tcblog10_Data",
+                         "Output/sumSize_annual/sizeConsidered10g_10kg",
+                         "EEZsummaries/gridded_outputs")
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
 
@@ -433,9 +436,11 @@ ensemble_bio <- bio_picts |>
                    #Setting column names
                    .names = "{.col}-{.fn}")) |> 
   #Restructuring data frame to ease corrected biomass calculations
-  pivot_longer(!c(mask:year), names_to = "ensemble_type", values_to = "ensemble_bio") |> 
+  pivot_longer(!c(mask:year), names_to = "ensemble_type", 
+               values_to = "ensemble_bio") |> 
   #Separating bias type from statistic calculated
-  separate_wider_delim(cols = "ensemble_type", delim = "-", names = c("ensemble_type", "stat")) |> 
+  separate_wider_delim(cols = "ensemble_type", delim = "-", 
+                       names = c("ensemble_type", "stat")) |> 
   pivot_wider(names_from = ensemble_type, values_from = ensemble_bio)
 ```
 
@@ -549,23 +554,30 @@ the three scenarios.
 
 ``` r
 #Visualising data
-p1 <- coral |> 
+p1 <- coral |>
   #Selecting three relevant scenarios
   filter(str_detect(scenario, "2.6|4.5|8.5")) |> 
   #Plot coral cover for all scenarios
-  ggplot(aes(x = year, y = coral_cover, colour = scenario, linetype = scenario))+
-  geom_line()+
+  ggplot(aes(x = year, y = coral_cover, colour = scenario))+
+  geom_line(linewidth = 1)+
+  scale_color_manual(labels = c("SSP1-2.6", "SSP2-4.5", "SSP5-8.5"),
+                     values = c("#173C66", "#F79420", "#951B1E"))+
   theme_bw()+
-  labs(y = "Coral cover (%)")+
-  theme(axis.title.x = element_blank(), 
-        legend.position = "top", legend.direction = "horizontal")
+  scale_x_continuous(expand = c(0, 0), breaks = seq(2024, 2100, 7))+
+  labs(y = "Coral cover (%)", x = "Year", 
+       color = "Socio-economic Pathways (SSPs)")+
+  theme(legend.position = "top", legend.title.position = "top", 
+        legend.text = element_text(size = 13), legend.direction = "horizontal", 
+        legend.title = element_text(hjust = 0.5, size = 13),
+        axis.text = element_text(size = 13), 
+        axis.title = element_text(size = 13))
 p1
 ```
 
 ![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 We will now calculate the mean biomass estimated under of scenarios
-`SSP1-2.6` and `SSP5-8.5`. We will add this to our figure as a black
+`SSP1-2.6` and `SSP5-8.5`. We will add this to our figure as a dotted
 line to check how well it represents the moderate emissions data.
 
 ``` r
@@ -580,16 +592,41 @@ mean_26_85 <- coral |>
   clean_names() |> 
   rowwise() |> 
   mutate(mean_scenarios = mean(c(ssp1_2_6, ssp5_8_5))) |> 
-  ungroup()
+  ungroup() |> 
+  select(year, mean_scenarios) |> 
+  rename(coral_cover = mean_scenarios) |> 
+  mutate(scenario = "SSP2-4.5_recons", .after = year) |> 
+  mutate(lt = "dotdash")
 
-p1+
-  geom_line(inherit.aes = F, data = mean_26_85, aes(x = year, y = mean_scenarios))
+
+coral |>
+  #Selecting three relevant scenarios
+  filter(str_detect(scenario, "2.6|4.5|8.5")) |> 
+  select(year, scenario, coral_cover) |> 
+  mutate(lt = "solid") |> 
+  bind_rows(mean_26_85) |> 
+  ggplot(aes(x = year, y = coral_cover, colour = scenario, linetype = lt))+
+  geom_line(linewidth = 0.85)+
+  scale_color_manual(labels = c("SSP1-2.6", "SSP2-4.5", "SSP2-4.5 (estimated)", 
+                                "SSP5-8.5"),
+                     values = c("#173C66", "#F79420", "#F79420", "#951B1E"))+
+  scale_linetype_identity()+
+  guides(color = guide_legend(override.aes = list(linetype = c(1, 1, 4, 1))))+
+  theme_bw()+
+  scale_x_continuous(expand = c(0, 0), breaks = seq(2024, 2100, 7))+
+  labs(y = "Coral cover (%)", x = "Year", 
+       color = "Socio-economic Pathways (SSPs)")+
+  theme(legend.position = "top", legend.title.position = "top", 
+        legend.text = element_text(size = 12), legend.direction = "horizontal", 
+        legend.title = element_text(hjust = 0.5, size = 13),
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 12))
 ```
 
 ![](Figures/04_Biomass_projections_SouthPacific_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
-The averaged coral cover (black line) is closer to coral cover under
-scenario `SSP2-4.5` (green dashed line) than either of the two
+The averaged coral cover (yellow dotted line) is closer to coral cover
+under scenario `SSP2-4.5` (yellow line) than either of the two
 scenarios. This approach is simple, but note that before 2060, it tends
 to underestimate coral cover. However, after 2060 coral cover is
 overestimated. We expect similar biases when calculating fish biomass
@@ -635,7 +672,8 @@ biomass_ssp245 |>
   #We will only plot the median values
   select(mask, year, ends_with("median")) |> 
   #Reformat data to make plotting easier
-  pivot_longer(ends_with("median"), names_to = "scenario", values_to = "biomass") |> 
+  pivot_longer(ends_with("median"), names_to = "scenario", 
+               values_to = "biomass") |> 
   #Plotting
   ggplot(aes(x = year, y = biomass, colour = scenario, linetype = scenario))+
   geom_line()+
