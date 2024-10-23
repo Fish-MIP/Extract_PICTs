@@ -29,6 +29,11 @@ Denisse Fierro Arcos
     id="toc-creating-individual-maps">Creating individual maps</a>
   - <a href="#saving-final-plot" id="toc-saving-final-plot">Saving final
     plot</a>
+- <a href="#calculating-model-agreement"
+  id="toc-calculating-model-agreement">Calculating model agreement</a>
+  - <a href="#plotting-model-agreement"
+    id="toc-plotting-model-agreement">Plotting model agreement</a>
+  - <a href="#saving-figure" id="toc-saving-figure">Saving figure</a>
 
 # Loading libraries
 
@@ -54,7 +59,8 @@ exclude the Great Barrier Reef (GBR) because it is not relevant here.
 #Loading PICTs EEZ mask and GBR boundaries 
 mask <- read_csv("../Outputs/mask_1deg.csv") |> 
   #Adding names to identify PICTS
-  left_join(read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv", col_select = c(name, MRGID)),
+  left_join(read_csv("../Outputs/SouthPacific_EEZ-GBR_keys.csv",
+                     col_select = c(name, MRGID)),
             by = c("mask"= "MRGID")) |> 
   #Rename coordinates
   rename(x = Lon, y = Lat)
@@ -86,11 +92,16 @@ we need to create our maps.
 
 ``` r
 #Folder containing outputs from FishMIP models
-base_folder <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/"
+base_folder <- file.path("/rd/gem/private/users/camillan/Extract_tcblog10_Data",
+                         "Output/sumSize_annual/sizeConsidered10g_10kg",
+                         "EEZsummaries/gridded_outputs")
+
 #Listing all relevant files to calculate biomass projections
 global_files <- list.files(base_folder, full.names = T)
+
 #Models
-members <- str_extract(global_files, "outputs//(.*)_(h|s)", group = 1) |> 
+members <- basename(global_files) |> 
+  str_extract("^(.*)_(h|s)", group = 1) |> 
   unique()
 ```
 
@@ -112,9 +123,11 @@ for(m in members){
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
     #Ignore columns SOVEREIGN1-3 - not needed here
-    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "eez", "GEONAME"))) |> 
+    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "eez", 
+                              "GEONAME"))) |> 
     #Extract data only for years to be used in maps
-    filter(year >= 2010 & year <= 2020 | year >= 2045 & year <= 2055 | year >= 2085 & year <= 2095) |> 
+    filter(year >= 2010 & year <= 2020 | year >= 2045 & year <= 2055 | 
+             year >= 2085 & year <= 2095) |> 
     #Do not keep data before 2021 for scenario ssp585
     filter(!((year >= 2015 & year <= 2020) & scenario == "ssp585")) |> 
     #Applying mask to classify by PICT
@@ -148,8 +161,10 @@ for(m in members){
     mutate(group = case_when(year <= 2020 ~ "reference",
                              year >= 2045 & year <= 2055 ~ "mean50",
                              year >= 2085 & year <= 2095 ~ "mean80"),
-           #The mean50 and mean80 groups also need to have the scenario as part of the label
-           group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
+           #The mean50 and mean80 groups also need to have the scenario as part 
+           #of the label
+           group = case_when(group != "reference" ~ str_c(group, scenario,
+                                                          sep = "_"), 
                              T ~ group)) |> 
     #Calculate mean per ensemble member
     group_by(x, y, mem, esm, mask, name, group) |> 
@@ -221,7 +236,8 @@ for the entire ensemble.
 
 ``` r
 #Listing all relevant files to calculate biomass projections
-maps_data <- list.files("../Outputs/", pattern = "_map_data.csv", full.names = T) |> 
+maps_data <- list.files("../Outputs/", pattern = "_map_data.csv",
+                        full.names = T) |> 
   map_df(~fread(.)) |> 
   #Calculations performed by year and EEZ
   group_by(x, y, mask, name) |> 
@@ -374,10 +390,11 @@ sf_use_s2(F)
 
 ``` r
 #Base map
-world <- ne_countries(returnclass = "sf", scale = "large")
+world <- ne_countries(returnclass = "sf", scale = "medium")
 
 #Split world in two hemispheres 
-west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -50, xmax = -120, ymax = 50)))
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -50, xmax = -120, 
+                                 ymax = 50)))
 ```
 
     ## although coordinates are longitude/latitude, st_intersection assumes that they
@@ -490,7 +507,12 @@ p80_585 <- int_bio |>
 
 #Get legend
 legend <- get_legend(p80_585)
+```
 
+    ## Warning in get_plot_component(plot, "guide-box"): Multiple components found;
+    ## returning the first one. To return all, use `return_all = TRUE`.
+
+``` r
 #Remove legend from last plot
 p80_585 <- p80_585+theme(legend.position = "none")
 
@@ -514,5 +536,70 @@ all_plots
 ## Saving final plot
 
 ``` r
-ggsave("../Outputs/maps_perc_change_PICTs_40s-80s_int.pdf", device = "pdf", width = 14, height = 9)
+ggsave("../Outputs/maps_perc_change_PICTs_40s-80s_int.pdf", device = "pdf", 
+       width = 14, height = 9)
+```
+
+# Calculating model agreement
+
+We will only calculate agreement for SSP5-8.5 as this is the only direct
+output available in all FishMIP models. Results for SSP2-4.5 were not
+available as outputs in FishMIP models and instead they were estimated,
+so agreement cannot be calculated.
+
+``` r
+agreement_df <- list.files("../Outputs/", pattern = "_map_data.csv",
+                           full.names = T) |> 
+  map_df(~fread(.)) |> 
+  select(c(x:esm, matches("^mean.*ssp585"))) |> 
+  unite("mem", mem:esm, remove = T) |> 
+  pivot_longer(ends_with("ssp585"), names_to = "decade", 
+               values_to = "values") |> 
+  mutate(decade = case_when(str_detect(decade, "50_") ~ "2045-2055",
+                            str_detect(decade, "80_") ~ "2085-2095"),
+         n_model = n_distinct(mem)) |> 
+  mutate(positive_vals = case_when(values >= 0 ~ 1, values < 0 ~ 0,
+                                   is.na(values) ~ NA)) |> 
+  group_by(x, y, decade) |> 
+  summarise(n_model = mean(n_model),
+            positive_vals = sum(positive_vals, na.rm = T)) |> 
+  mutate(negative_vals = n_model - positive_vals,
+         agreement = (max(negative_vals, positive_vals)/n_model)*100,
+         x = x%%360)
+```
+
+    ## `summarise()` has grouped output by 'x', 'y'. You can override using the
+    ## `.groups` argument.
+
+## Plotting model agreement
+
+``` r
+agreement_df |> 
+  ggplot(aes(x, y, fill = agreement))+
+  geom_tile()+
+  scale_fill_stepsn(colors = cmocean("dense", start = 0.1, end = 0.6)(256), 
+                    n.breaks = 11, limits = c(0, 100), 
+                    show.limits = T)+
+  geom_sf(inherit.aes = F, data = picts, fill = NA, show.legend = F, 
+          linewidth = 0.25, color = "#e8e7e4")+
+  geom_sf(inherit.aes = F, data = oceancent)+
+  facet_grid(~decade)+
+  theme_bw()+
+  labs(fill = "model agreement (%)")+
+  theme(axis.title = element_blank(), axis.text = element_text(size = 11),
+        plot.title = element_text(hjust = 0.5), legend.position = "bottom", 
+        legend.title.position = "top", legend.key.width = unit(1.5, "cm"), 
+        legend.title = element_text(hjust = 0.5), 
+        legend.text = element_text(size = 11), 
+        strip.text = element_text(size = 11))+
+  lims(x = c(110, 240), y = c(-49, 25))
+```
+
+![](Figures/06_Mapping_biomass_change_SouthPacific_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+## Saving figure
+
+``` r
+ggsave("../Outputs/maps_model_agreement_PICTs_40s-80s_ssp585.pdf", 
+       device = "pdf", width = 15, height = 6)
 ```
